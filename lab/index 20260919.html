@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Circle Line Art Animation Engine (Standalone)</title>
+  
+  <!-- External Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Embedded Stylesheet (Works 100% without local server) -->
+  <style>
+    /* ============================================================================
+       DESIGN SYSTEM TOKENS & STYLES (STANDALONE EMBED)
+       ============================================================================ */
+    :root {
+      --bg-dark: #0a0d14;
+      --panel-bg: rgba(16, 21, 35, 0.75);
+      --panel-border: rgba(255, 255, 255, 0.1);
+      --accent-color: #00f2fe;
+      --accent-glow: rgba(0, 242, 254, 0.4);
+      --text-main: #f0f4f8;
+      --text-muted: #8a99ad;
+      --font-heading: 'Space Grotesk', sans-serif;
+      --font-body: 'Outfit', sans-serif;
+      --radius-lg: 16px;
+      --radius-md: 10px;
+      --transition-fast: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+      font-family: var(--font-body);
+      color: var(--text-main);
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app-container {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    .canvas-wrapper {
+      flex: 1;
+      height: 100%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, #111726 0%, #080a10 100%);
+    }
+
+    #animationCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .status-overlay {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--panel-border);
+      padding: 10px 18px;
+      border-radius: 30px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      z-index: 10;
+      transition: var(--transition-fast);
+    }
+
+    .status-indicator-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #00f2fe;
+      box-shadow: 0 0 10px #00f2fe;
+      transition: background-color 0.3s, box-shadow 0.3s;
+    }
+
+    .status-overlay.growing .status-indicator-dot {
+      background-color: #00f2fe;
+      box-shadow: 0 0 10px #00f2fe;
+      animation: pulse-dot 1.2s infinite alternate;
+    }
+
+    .status-overlay.paused-max .status-indicator-dot {
+      background-color: #ff9f43;
+      box-shadow: 0 0 10px #ff9f43;
+      animation: none;
+    }
+
+    .status-overlay.shrinking .status-indicator-dot {
+      background-color: #ff4757;
+      box-shadow: 0 0 10px #ff4757;
+      animation: pulse-dot 1.2s infinite alternate;
+    }
+
+    .status-overlay.paused-min .status-indicator-dot {
+      background-color: #2ed573;
+      box-shadow: 0 0 10px #2ed573;
+      animation: none;
+    }
+
+    @keyframes pulse-dot {
+      0% { transform: scale(0.9); opacity: 0.7; }
+      100% { transform: scale(1.2); opacity: 1; }
+    }
+
+    .status-text {
+      font-family: var(--font-heading);
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .status-timer {
+      font-family: var(--font-heading);
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--accent-color);
+      min-width: 45px;
+    }
+
+    .quick-toolbar {
+      position: absolute;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--panel-border);
+      padding: 8px 16px;
+      border-radius: 40px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      z-index: 10;
+    }
+
+    .btn-icon {
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: var(--transition-fast);
+    }
+
+    .btn-icon:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--accent-color);
+      transform: translateY(-2px);
+    }
+
+    .btn-icon:active {
+      transform: translateY(0);
+    }
+
+    .btn-icon .icon {
+      width: 22px;
+      height: 22px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .control-panel {
+      width: 360px;
+      height: 100%;
+      background: var(--panel-bg);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-left: 1px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      box-shadow: -8px 0 32px rgba(0, 0, 0, 0.4);
+      z-index: 20;
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+    }
+
+    .control-panel.collapsed {
+      transform: translateX(100%);
+      position: absolute;
+      right: 0;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--panel-border);
+    }
+
+    .panel-header h2 {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.8rem;
+      cursor: pointer;
+      line-height: 1;
+      transition: var(--transition-fast);
+    }
+
+    .btn-close:hover {
+      color: var(--text-main);
+    }
+
+    .panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .panel-body::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .panel-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .panel-body::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+    }
+
+    .panel-section {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 16px;
+      border-radius: var(--radius-lg);
+    }
+
+    .panel-section h3 {
+      font-family: var(--font-heading);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .control-group label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .control-group label span {
+      color: var(--accent-color);
+      font-weight: 600;
+    }
+
+    .hint {
+      font-size: 0.75rem;
+      color: #63738a;
+      line-height: 1.3;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.15);
+      outline: none;
+      transition: var(--transition-fast);
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent-color);
+      box-shadow: 0 0 10px var(--accent-glow);
+      cursor: pointer;
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    select {
+      width: 100%;
+      background: rgba(15, 20, 32, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      outline: none;
+      cursor: pointer;
+      transition: var(--transition-fast);
+    }
+
+    select:hover, select:focus {
+      border-color: var(--accent-color);
+    }
+
+    .checkbox-group {
+      gap: 10px;
+    }
+
+    .checkbox-group label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      cursor: pointer;
+      justify-content: flex-start;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      accent-color: var(--accent-color);
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .panel-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--panel-border);
+    }
+
+    .btn-secondary {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      font-family: var(--font-heading);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition-fast);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    @media (max-width: 768px) {
+      .control-panel {
+        position: absolute;
+        right: 0;
+        width: 100%;
+        max-width: 320px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <main class="canvas-wrapper">
+      <canvas id="animationCanvas"></canvas>
+      
+      <div class="status-overlay" id="statusOverlay">
+        <div class="status-indicator-dot" id="statusDot"></div>
+        <span class="status-text" id="statusText">Expanding...</span>
+        <span class="status-timer" id="statusTimer"></span>
+      </div>
+
+      <div class="quick-toolbar">
+        <button id="btnPlayPause" class="btn-icon" title="Play / Pause">
+          <svg id="iconPause" class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          <svg id="iconPlay" class="icon hidden" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button id="btnReset" class="btn-icon" title="Reset Animation">
+          <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+        </button>
+        <button id="btnTogglePanel" class="btn-icon" title="Toggle Settings Panel">
+          <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6-3.6z"/></svg>
+        </button>
+        <button id="btnFullscreen" class="btn-icon" title="Toggle Fullscreen">
+          <svg class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+        </button>
+      </div>
+    </main>
+
+    <aside class="control-panel" id="controlPanel">
+      <div class="panel-header">
+        <h2>Control Parameters</h2>
+        <button id="btnClosePanel" class="btn-close">&times;</button>
+      </div>
+
+      <div class="panel-body">
+        <section class="panel-section">
+          <h3><span class="section-icon">⏱️</span> Speed & Timing</h3>
+          
+          <div class="control-group">
+            <label for="inputHoldDuration">
+              Pause Duration: <span id="valHoldDuration">5.0</span> s
+            </label>
+            <input type="range" id="inputHoldDuration" min="0" max="60" step="0.5" value="5">
+            <span class="hint">Hold time at max and min bounds (0.0s - 60.0s)</span>
+          </div>
+
+          <div class="control-group">
+            <label for="inputExpandSpeed">
+              Expansion Duration: <span id="valExpandSpeed">3.0</span> s
+            </label>
+            <input type="range" id="inputExpandSpeed" min="0.1" max="60" step="0.5" value="3.0">
+            <span class="hint">Time to grow from min to max radius (up to 60s)</span>
+          </div>
+
+          <div class="control-group">
+            <label for="inputShrinkSpeed">
+              Shrink Duration: <span id="valShrinkSpeed">3.0</span> s
+            </label>
+            <input type="range" id="inputShrinkSpeed" min="0.1" max="60" step="0.5" value="3.0">
+            <span class="hint">Time to shrink from max to min radius (up to 60s)</span>
+          </div>
+
+          <div class="control-group checkbox-group">
+            <label><input type="checkbox" id="chkSyncSpeed" checked> Synchronize Expansion & Shrink Speed</label>
+          </div>
+
+          <div class="control-group">
+            <label for="selectEasing">Easing Curve</label>
+            <select id="selectEasing">
+              <option value="easeInOutCubic" selected>Cubic Ease In-Out (Smooth Deceleration)</option>
+              <option value="easeOutCubic">Ease Out (Slow Stop at End)</option>
+              <option value="easeInOutSine">Sine Ease In-Out (Natural Harmonic)</option>
+              <option value="easeInOutQuad">Quad Ease In-Out (Standard)</option>
+              <option value="easeInOutExpo">Exponential Ease (Dramatic)</option>
+              <option value="linear">Linear (Constant Speed)</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h3><span class="section-icon">📐</span> Layout & Circle Geometry</h3>
+          
+          <div class="control-group">
+            <label for="selectLayout">Layout Style</label>
+            <select id="selectLayout">
+              <option value="grid" selected>10x10 Grid (Standard)</option>
+              <option value="hexagon">Hexagonal Honeycomb</option>
+              <option value="pentagon">Pentagonal Rings</option>
+              <option value="triangle">Triangular Mesh</option>
+              <option value="radial">Concentric Radial Circles</option>
+              <option value="spiral">Phyllotaxis Spiral</option>
+              <option value="random">Random Murmuration Scatter</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="inputCircleSpacing">
+              Circle Spacing: <span id="valCircleSpacing">1.00</span> x
+            </label>
+            <input type="range" id="inputCircleSpacing" min="0.2" max="2.5" step="0.05" value="1.0">
+            <span class="hint">Center-to-center distance ratio</span>
+          </div>
+
+          <div class="control-group" id="grpGridSize">
+            <label for="inputGridSize">
+              Grid Divisions: <span id="valGridSize">10 x 10</span>
+            </label>
+            <input type="range" id="inputGridSize" min="1" max="25" step="1" value="10">
+          </div>
+
+          <div class="control-group hidden" id="grpCircleCount">
+            <label for="inputCircleCount">
+              Total Circle Count: <span id="valCircleCount">100</span>
+            </label>
+            <input type="range" id="inputCircleCount" min="3" max="300" step="1" value="100">
+          </div>
+
+          <div class="control-group">
+            <label for="inputMinRadius">
+              Minimum Radius: <span id="valMinRadius">10</span> px
+            </label>
+            <input type="range" id="inputMinRadius" min="1" max="60" step="1" value="10">
+          </div>
+
+          <div class="control-group">
+            <label for="inputMaxRadius">
+              Maximum Radius: <span id="valMaxRadius">100</span> px
+            </label>
+            <input type="range" id="inputMaxRadius" min="20" max="300" step="5" value="100">
+          </div>
+
+          <div class="control-group">
+            <label for="inputStaggerDelay">
+              Radial Stagger Wave Delay: <span id="valStaggerDelay">0.00</span> s
+            </label>
+            <input type="range" id="inputStaggerDelay" min="0" max="2" step="0.05" value="0">
+            <span class="hint">Set to 0 for fully synchronized movement</span>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h3><span class="section-icon">🎨</span> Line Art & Visual Style</h3>
+          
+          <div class="control-group">
+            <label for="selectTheme">Color Theme</label>
+            <select id="selectTheme">
+              <option value="cyanGlow" selected>Cyber Neon Cyan</option>
+              <option value="monochrome">Minimal White & Black</option>
+              <option value="aurora">Drifting Aurora Violet</option>
+              <option value="goldGlow">Warm Elegant Gold</option>
+              <option value="rainbowPhase">Spectrum Rainbow Phase</option>
+              <option value="lightMinimal">Light Mode (Dark Ink)</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="inputStrokeWidth">
+              Line Thickness: <span id="valStrokeWidth">2.0</span> px
+            </label>
+            <input type="range" id="inputStrokeWidth" min="0.5" max="8" step="0.5" value="2.0">
+          </div>
+
+          <div class="control-group">
+            <label for="inputGlowIntensity">
+              Glow Intensity: <span id="valGlowIntensity">15</span> px
+            </label>
+            <input type="range" id="inputGlowIntensity" min="0" max="40" step="1" value="15">
+          </div>
+
+          <div class="control-group checkbox-group">
+            <label><input type="checkbox" id="chkShowCenters"> Show Center Points</label>
+            <label><input type="checkbox" id="chkShowGridLines"> Show Guide Lines</label>
+            <label><input type="checkbox" id="chkConcentricRings"> Concentric Inner Rings</label>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h3><span class="section-icon">✨</span> Interaction</h3>
+          <div class="control-group checkbox-group">
+            <label><input type="checkbox" id="chkMouseInteraction" checked> Mouse Proximity Ripple Boost</label>
+          </div>
+        </section>
+      </div>
+
+      <div class="panel-footer">
+        <button id="btnResetDefaults" class="btn-secondary">Reset to Default Settings</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Embedded Standalone Engine Script (No CORS/Server required) -->
+  <script>
+    const STATE = { GROWING: 0, PAUSED_MAX: 1, SHRINKING: 2, PAUSED_MIN: 3 };
+
+    const Easing = {
+      easeInOutCubic: (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2,
+      easeOutCubic: (t) => 1 - Math.pow(1 - t, 3),
+      easeInOutSine: (t) => -(Math.cos(Math.PI * t) - 1) / 2,
+      easeInOutQuad: (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2,
+      easeInOutExpo: (t) => t === 0 ? 0 : t === 1 ? 1 : t < 0.5 ? Math.pow(2, 20 * t - 10) / 2 : (2 - Math.pow(2, -20 * t + 10)) / 2,
+      linear: (t) => t
+    };
+
+    const Themes = {
+      cyanGlow: { bg: '#0a0d14', stroke: '#00f2fe', glow: '#00f2fe', centerDot: 'rgba(0, 242, 254, 0.7)', gridLine: 'rgba(0, 242, 254, 0.25)' },
+      monochrome: { bg: '#080808', stroke: '#ffffff', glow: '#ffffff', centerDot: 'rgba(255, 255, 255, 0.7)', gridLine: 'rgba(255, 255, 255, 0.22)' },
+      aurora: { bg: '#0c0714', stroke: 'dynamic_aurora', glow: 'dynamic_aurora', centerDot: 'rgba(238, 9, 121, 0.7)', gridLine: 'rgba(181, 55, 242, 0.28)' },
+      goldGlow: { bg: '#0f0c05', stroke: '#ffe066', glow: '#ffd700', centerDot: 'rgba(255, 215, 0, 0.7)', gridLine: 'rgba(255, 215, 0, 0.25)' },
+      rainbowPhase: { bg: '#0a0a12', stroke: 'dynamic_rainbow', glow: 'dynamic_rainbow', centerDot: 'rgba(255, 255, 255, 0.7)', gridLine: 'rgba(255, 255, 255, 0.22)' },
+      lightMinimal: { bg: '#f8f9fa', stroke: '#1a1d24', glow: 'transparent', centerDot: 'rgba(26, 29, 36, 0.4)', gridLine: 'rgba(26, 29, 36, 0.18)' }
+    };
+
+    class CircleAnimationApp {
+      constructor() {
+        this.canvas = document.getElementById('animationCanvas');
+        this.ctx = this.canvas.getContext('2d');
+
+        this.params = {
+          layoutMode: 'grid', gridRows: 10, gridCols: 10, circleCount: 100, circleSpacing: 1.0,
+          minRadius: 10, maxRadius: 100, expandDuration: 3.0, shrinkDuration: 3.0, syncSpeed: true,
+          holdDuration: 5.0, easingName: 'easeInOutCubic', themeName: 'cyanGlow', strokeWidth: 2.0,
+          glowIntensity: 15, showCenters: false, showGridLines: false, concentricRings: false,
+          staggerDelay: 0.0, mouseInteraction: true
+        };
+
+        this.currentState = STATE.GROWING;
+        this.phaseElapsedTime = 0;
+        this.globalTime = 0;
+        this.lastTimestamp = null;
+        this.isPlaying = true;
+        this.mouse = { x: -9999, y: -9999, targetX: -9999, targetY: -9999 };
+        this.circlePoints = [];
+        this.randomPositionsSeed = this.generateRandomPositions(300);
+
+        this.initDOM();
+        this.bindEvents();
+        this.resizeCanvas();
+        window.addEventListener('resize', () => this.resizeCanvas());
+        requestAnimationFrame((t) => this.animate(t));
+      }
+
+      generateRandomPositions(count) {
+        const pts = [];
+        let seed = 42;
+        const lcg = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
+        for (let i = 0; i < count; i++) {
+          pts.push({ nx: (lcg() - 0.5), ny: (lcg() - 0.5), seedX: lcg() * 100, seedY: lcg() * 100, speedX: 0.3 + lcg() * 0.7, speedY: 0.3 + lcg() * 0.7 });
+        }
+        return pts;
+      }
+
+      initDOM() {
+        this.btnPlayPause = document.getElementById('btnPlayPause');
+        this.btnReset = document.getElementById('btnReset');
+        this.btnTogglePanel = document.getElementById('btnTogglePanel');
+        this.btnClosePanel = document.getElementById('btnClosePanel');
+        this.btnFullscreen = document.getElementById('btnFullscreen');
+        this.btnResetDefaults = document.getElementById('btnResetDefaults');
+        this.statusOverlay = document.getElementById('statusOverlay');
+        this.statusText = document.getElementById('statusText');
+        this.statusTimer = document.getElementById('statusTimer');
+        this.iconPause = document.getElementById('iconPause');
+        this.iconPlay = document.getElementById('iconPlay');
+        this.controlPanel = document.getElementById('controlPanel');
+        this.inputHoldDuration = document.getElementById('inputHoldDuration');
+        this.valHoldDuration = document.getElementById('valHoldDuration');
+        this.inputExpandSpeed = document.getElementById('inputExpandSpeed');
+        this.valExpandSpeed = document.getElementById('valExpandSpeed');
+        this.inputShrinkSpeed = document.getElementById('inputShrinkSpeed');
+        this.valShrinkSpeed = document.getElementById('valShrinkSpeed');
+        this.chkSyncSpeed = document.getElementById('chkSyncSpeed');
+        this.selectEasing = document.getElementById('selectEasing');
+        this.selectLayout = document.getElementById('selectLayout');
+        this.inputCircleSpacing = document.getElementById('inputCircleSpacing');
+        this.valCircleSpacing = document.getElementById('valCircleSpacing');
+        this.grpGridSize = document.getElementById('grpGridSize');
+        this.inputGridSize = document.getElementById('inputGridSize');
+        this.valGridSize = document.getElementById('valGridSize');
+        this.grpCircleCount = document.getElementById('grpCircleCount');
+        this.inputCircleCount = document.getElementById('inputCircleCount');
+        this.valCircleCount = document.getElementById('valCircleCount');
+        this.inputMinRadius = document.getElementById('inputMinRadius');
+        this.valMinRadius = document.getElementById('valMinRadius');
+        this.inputMaxRadius = document.getElementById('inputMaxRadius');
+        this.valMaxRadius = document.getElementById('valMaxRadius');
+        this.inputStaggerDelay = document.getElementById('inputStaggerDelay');
+        this.valStaggerDelay = document.getElementById('valStaggerDelay');
+        this.selectTheme = document.getElementById('selectTheme');
+        this.inputStrokeWidth = document.getElementById('inputStrokeWidth');
+        this.valStrokeWidth = document.getElementById('valStrokeWidth');
+        this.inputGlowIntensity = document.getElementById('inputGlowIntensity');
+        this.valGlowIntensity = document.getElementById('valGlowIntensity');
+        this.chkShowCenters = document.getElementById('chkShowCenters');
+        this.chkShowGridLines = document.getElementById('chkShowGridLines');
+        this.chkConcentricRings = document.getElementById('chkConcentricRings');
+        this.chkMouseInteraction = document.getElementById('chkMouseInteraction');
+      }
+
+      bindEvents() {
+        this.btnPlayPause.addEventListener('click', () => this.togglePlayPause());
+        this.btnReset.addEventListener('click', () => this.resetAnimation());
+        this.btnTogglePanel.addEventListener('click', () => this.controlPanel.classList.toggle('collapsed'));
+        this.btnClosePanel.addEventListener('click', () => this.controlPanel.classList.add('collapsed'));
+        this.btnFullscreen.addEventListener('click', () => {
+          if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+          else if (document.exitFullscreen) document.exitFullscreen();
+        });
+        this.btnResetDefaults.addEventListener('click', () => this.resetToDefaults());
+
+        this.inputHoldDuration.addEventListener('input', (e) => {
+          this.params.holdDuration = parseFloat(e.target.value);
+          this.valHoldDuration.textContent = this.params.holdDuration.toFixed(1);
+        });
+
+        this.inputExpandSpeed.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value);
+          this.params.expandDuration = val;
+          this.valExpandSpeed.textContent = val.toFixed(1);
+          if (this.params.syncSpeed) {
+            this.params.shrinkDuration = val;
+            this.inputShrinkSpeed.value = val;
+            this.valShrinkSpeed.textContent = val.toFixed(1);
+          }
+        });
+
+        this.inputShrinkSpeed.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value);
+          this.params.shrinkDuration = val;
+          this.valShrinkSpeed.textContent = val.toFixed(1);
+          if (this.params.syncSpeed) {
+            this.params.expandDuration = val;
+            this.inputExpandSpeed.value = val;
+            this.valExpandSpeed.textContent = val.toFixed(1);
+          }
+        });
+
+        this.chkSyncSpeed.addEventListener('change', (e) => {
+          this.params.syncSpeed = e.target.checked;
+          if (this.params.syncSpeed) {
+            this.params.shrinkDuration = this.params.expandDuration;
+            this.inputShrinkSpeed.value = this.params.expandDuration;
+            this.valShrinkSpeed.textContent = this.params.expandDuration.toFixed(1);
+          }
+        });
+
+        this.selectEasing.addEventListener('change', (e) => { this.params.easingName = e.target.value; });
+        this.selectLayout.addEventListener('change', (e) => {
+          this.params.layoutMode = e.target.value;
+          if (this.params.layoutMode === 'grid') {
+            this.grpGridSize.classList.remove('hidden');
+            this.grpCircleCount.classList.add('hidden');
+          } else {
+            this.grpGridSize.classList.add('hidden');
+            this.grpCircleCount.classList.remove('hidden');
+          }
+          this.recalculatePoints();
+        });
+
+        this.inputCircleSpacing.addEventListener('input', (e) => {
+          this.params.circleSpacing = parseFloat(e.target.value);
+          this.valCircleSpacing.textContent = this.params.circleSpacing.toFixed(2);
+          this.recalculatePoints();
+        });
+
+        this.inputGridSize.addEventListener('input', (e) => {
+          const val = parseInt(e.target.value, 10);
+          this.params.gridRows = val; this.params.gridCols = val;
+          this.valGridSize.textContent = `${val} x ${val}`;
+          this.recalculatePoints();
+        });
+
+        this.inputCircleCount.addEventListener('input', (e) => {
+          const val = parseInt(e.target.value, 10);
+          this.params.circleCount = val;
+          this.valCircleCount.textContent = val;
+          this.recalculatePoints();
+        });
+
+        this.inputMinRadius.addEventListener('input', (e) => {
+          this.params.minRadius = parseInt(e.target.value, 10);
+          this.valMinRadius.textContent = this.params.minRadius;
+          if (this.params.minRadius >= this.params.maxRadius) {
+            this.params.maxRadius = this.params.minRadius + 10;
+            this.inputMaxRadius.value = this.params.maxRadius;
+            this.valMaxRadius.textContent = this.params.maxRadius;
+          }
+        });
+
+        this.inputMaxRadius.addEventListener('input', (e) => {
+          this.params.maxRadius = parseInt(e.target.value, 10);
+          this.valMaxRadius.textContent = this.params.maxRadius;
+          if (this.params.maxRadius <= this.params.minRadius) {
+            this.params.minRadius = Math.max(1, this.params.maxRadius - 10);
+            this.inputMinRadius.value = this.params.minRadius;
+            this.valMinRadius.textContent = this.params.minRadius;
+          }
+        });
+
+        this.inputStaggerDelay.addEventListener('input', (e) => {
+          this.params.staggerDelay = parseFloat(e.target.value);
+          this.valStaggerDelay.textContent = this.params.staggerDelay.toFixed(2);
+        });
+
+        this.selectTheme.addEventListener('change', (e) => { this.params.themeName = e.target.value; });
+        this.inputStrokeWidth.addEventListener('input', (e) => {
+          this.params.strokeWidth = parseFloat(e.target.value);
+          this.valStrokeWidth.textContent = this.params.strokeWidth.toFixed(1);
+        });
+        this.inputGlowIntensity.addEventListener('input', (e) => {
+          this.params.glowIntensity = parseInt(e.target.value, 10);
+          this.valGlowIntensity.textContent = this.params.glowIntensity;
+        });
+
+        this.chkShowCenters.addEventListener('change', (e) => { this.params.showCenters = e.target.checked; });
+        this.chkShowGridLines.addEventListener('change', (e) => { this.params.showGridLines = e.target.checked; });
+        this.chkConcentricRings.addEventListener('change', (e) => { this.params.concentricRings = e.target.checked; });
+        this.chkMouseInteraction.addEventListener('change', (e) => { this.params.mouseInteraction = e.target.checked; });
+
+        const wrapper = this.canvas.parentElement;
+        wrapper.addEventListener('mousemove', (e) => {
+          const rect = this.canvas.getBoundingClientRect();
+          this.mouse.targetX = (e.clientX - rect.left) * (this.canvas.width / rect.width);
+          this.mouse.targetY = (e.clientY - rect.top) * (this.canvas.height / rect.height);
+        });
+        wrapper.addEventListener('mouseleave', () => { this.mouse.targetX = -9999; this.mouse.targetY = -9999; });
+      }
+
+      togglePlayPause() {
+        this.isPlaying = !this.isPlaying;
+        if (this.isPlaying) { this.iconPause.classList.remove('hidden'); this.iconPlay.classList.add('hidden'); this.lastTimestamp = null; }
+        else { this.iconPause.classList.add('hidden'); this.iconPlay.classList.remove('hidden'); }
+      }
+
+      resetAnimation() {
+        this.currentState = STATE.GROWING;
+        this.phaseElapsedTime = 0;
+        this.globalTime = 0;
+        this.lastTimestamp = null;
+        this.updateStatusBadge();
+      }
+
+      resetToDefaults() {
+        this.params = {
+          layoutMode: 'grid', gridRows: 10, gridCols: 10, circleCount: 100, circleSpacing: 1.0,
+          minRadius: 10, maxRadius: 100, expandDuration: 3.0, shrinkDuration: 3.0, syncSpeed: true,
+          holdDuration: 5.0, easingName: 'easeInOutCubic', themeName: 'cyanGlow', strokeWidth: 2.0,
+          glowIntensity: 15, showCenters: false, showGridLines: false, concentricRings: false,
+          staggerDelay: 0.0, mouseInteraction: true
+        };
+
+        this.selectLayout.value = 'grid';
+        this.grpGridSize.classList.remove('hidden');
+        this.grpCircleCount.classList.add('hidden');
+        this.inputGridSize.value = 10; this.valGridSize.textContent = '10 x 10';
+        this.inputCircleCount.value = 100; this.valCircleCount.textContent = '100';
+        this.inputCircleSpacing.value = 1.0; this.valCircleSpacing.textContent = '1.00';
+        this.inputHoldDuration.value = 5; this.valHoldDuration.textContent = '5.0';
+        this.inputExpandSpeed.value = 3.0; this.valExpandSpeed.textContent = '3.0';
+        this.inputShrinkSpeed.value = 3.0; this.valShrinkSpeed.textContent = '3.0';
+        this.chkSyncSpeed.checked = true;
+        this.selectEasing.value = 'easeInOutCubic';
+        this.inputMinRadius.value = 10; this.valMinRadius.textContent = '10';
+        this.inputMaxRadius.value = 100; this.valMaxRadius.textContent = '100';
+        this.inputStaggerDelay.value = 0; this.valStaggerDelay.textContent = '0.00';
+        this.selectTheme.value = 'cyanGlow';
+        this.inputStrokeWidth.value = 2.0; this.valStrokeWidth.textContent = '2.0';
+        this.inputGlowIntensity.value = 15; this.valGlowIntensity.textContent = '15';
+        this.chkShowCenters.checked = false; this.chkShowGridLines.checked = false;
+        this.chkConcentricRings.checked = false; this.chkMouseInteraction.checked = true;
+
+        this.recalculatePoints();
+        this.resetAnimation();
+      }
+
+      resizeCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = this.canvas.parentElement.getBoundingClientRect();
+        this.canvas.width = rect.width * dpr;
+        this.canvas.height = rect.height * dpr;
+        this.dpr = dpr;
+        this.recalculatePoints();
+      }
+
+      recalculatePoints() {
+        const width = this.canvas.width; const height = this.canvas.height;
+        if (!width || !height) return;
+
+        const points = [];
+        const padding = Math.min(width, height) * 0.08;
+        const cx = width / 2; const cy = height / 2;
+        const baseRadiusBound = (Math.min(width, height) - padding * 2) / 2;
+        const maxRadiusBound = baseRadiusBound * this.params.circleSpacing;
+        const mode = this.params.layoutMode;
+
+        if (mode === 'grid') {
+          const rows = this.params.gridRows; const cols = this.params.gridCols;
+          const baseAreaW = (width - padding * 2) * this.params.circleSpacing;
+          const baseAreaH = (height - padding * 2) * this.params.circleSpacing;
+          const cellW = baseAreaW / cols; const cellH = baseAreaH / rows;
+          const startX = cx - (cols * cellW) / 2; const startY = cy - (rows * cellH) / 2;
+
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const px = startX + (c + 0.5) * cellW;
+              const py = startY + (r + 0.5) * cellH;
+              points.push({
+                x: px, y: py, baseX: px, baseY: py, row: r, col: c,
+                distRatio: Math.sqrt(Math.pow((c - (cols - 1) / 2), 2) + Math.pow((r - (rows - 1) / 2), 2))
+              });
+            }
+          }
+        } else if (mode === 'hexagon') {
+          const count = this.params.circleCount;
+          const rings = Math.ceil(Math.sqrt(count / 3));
+          points.push({ x: cx, y: cy, baseX: cx, baseY: cy, distRatio: 0 });
+          let added = 1;
+          for (let ring = 1; ring <= rings && added < count; ring++) {
+            const ringRadius = (ring / rings) * maxRadiusBound;
+            const ptsInRing = ring * 6;
+            for (let i = 0; i < ptsInRing && added < count; i++) {
+              const angle = (i / ptsInRing) * Math.PI * 2;
+              const px = cx + Math.cos(angle) * ringRadius;
+              const py = cy + Math.sin(angle) * ringRadius;
+              points.push({ x: px, y: py, baseX: px, baseY: py, distRatio: ring / rings });
+              added++;
+            }
+          }
+        } else if (mode === 'pentagon') {
+          const count = this.params.circleCount;
+          const rings = Math.ceil(count / 5);
+          points.push({ x: cx, y: cy, baseX: cx, baseY: cy, distRatio: 0 });
+          let added = 1;
+          for (let ring = 1; ring <= rings && added < count; ring++) {
+            const ringRadius = (ring / rings) * maxRadiusBound;
+            const ptsInRing = Math.min(count - added, ring * 5);
+            for (let i = 0; i < ptsInRing && added < count; i++) {
+              const angle = (i / ptsInRing) * Math.PI * 2 - Math.PI / 2;
+              const px = cx + Math.cos(angle) * ringRadius;
+              const py = cy + Math.sin(angle) * ringRadius;
+              points.push({ x: px, y: py, baseX: px, baseY: py, distRatio: ring / rings });
+              added++;
+            }
+          }
+        } else if (mode === 'triangle') {
+          const count = this.params.circleCount;
+          const rings = Math.ceil(count / 3);
+          points.push({ x: cx, y: cy, baseX: cx, baseY: cy, distRatio: 0 });
+          let added = 1;
+          for (let ring = 1; ring <= rings && added < count; ring++) {
+            const ringRadius = (ring / rings) * maxRadiusBound;
+            const ptsInRing = Math.min(count - added, ring * 3);
+            for (let i = 0; i < ptsInRing && added < count; i++) {
+              const angle = (i / ptsInRing) * Math.PI * 2 - Math.PI / 2;
+              const px = cx + Math.cos(angle) * ringRadius;
+              const py = cy + Math.sin(angle) * ringRadius;
+              points.push({ x: px, y: py, baseX: px, baseY: py, distRatio: ring / rings });
+              added++;
+            }
+          }
+        } else if (mode === 'radial') {
+          const count = this.params.circleCount;
+          const rings = Math.max(1, Math.floor(Math.sqrt(count)));
+          let added = 0;
+          for (let ring = 1; ring <= rings; ring++) {
+            const ringRadius = (ring / rings) * maxRadiusBound;
+            const ptsInRing = Math.floor(count / rings);
+            for (let i = 0; i < ptsInRing && added < count; i++) {
+              const angle = (i / ptsInRing) * Math.PI * 2;
+              const px = cx + Math.cos(angle) * ringRadius;
+              const py = cy + Math.sin(angle) * ringRadius;
+              points.push({ x: px, y: py, baseX: px, baseY: py, distRatio: ring / rings });
+              added++;
+            }
+          }
+        } else if (mode === 'spiral') {
+          const count = this.params.circleCount;
+          const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+          for (let i = 0; i < count; i++) {
+            const r = Math.sqrt(i / count) * maxRadiusBound;
+            const theta = i * goldenAngle;
+            const px = cx + Math.cos(theta) * r;
+            const py = cy + Math.sin(theta) * r;
+            points.push({ x: px, y: py, baseX: px, baseY: py, distRatio: r / Math.max(1, maxRadiusBound) });
+          }
+        } else if (mode === 'random') {
+          const count = this.params.circleCount;
+          const scatterSpread = Math.min(width, height) * 0.7 * this.params.circleSpacing;
+          for (let i = 0; i < count; i++) {
+            const seedPt = this.randomPositionsSeed[i % this.randomPositionsSeed.length];
+            const px = cx + seedPt.nx * scatterSpread;
+            const py = cy + seedPt.ny * scatterSpread;
+            const dist = Math.sqrt(Math.pow(px - cx, 2) + Math.pow(py - cy, 2));
+            points.push({
+              x: px, y: py, baseX: px, baseY: py,
+              seedX: seedPt.seedX, seedY: seedPt.seedY, speedX: seedPt.speedX, speedY: seedPt.speedY,
+              distRatio: dist / Math.max(1, scatterSpread)
+            });
+          }
+        }
+
+        let maxDist = 0.001;
+        points.forEach((p) => { if (p.distRatio > maxDist) maxDist = p.distRatio; });
+        points.forEach((p) => { p.distRatio = p.distRatio / maxDist; });
+
+        this.circlePoints = points;
+      }
+
+      animate(timestamp) {
+        if (!this.lastTimestamp) this.lastTimestamp = timestamp;
+        const dt = (timestamp - this.lastTimestamp) / 1000;
+        this.lastTimestamp = timestamp;
+
+        if (this.isPlaying) {
+          this.globalTime += dt;
+          this.updateState(dt);
+          this.updateStarlingDrift();
+        }
+
+        this.mouse.x += (this.mouse.targetX - this.mouse.x) * 0.1;
+        this.mouse.y += (this.mouse.targetY - this.mouse.y) * 0.1;
+
+        this.render(timestamp);
+        this.updateStatusBadge();
+        requestAnimationFrame((t) => this.animate(t));
+      }
+
+      updateStarlingDrift() {
+        if (this.params.layoutMode !== 'random') return;
+        const t = this.globalTime; const dpr = this.dpr || 1;
+        const pts = this.circlePoints; const count = pts.length;
+        const flockCenterX = Math.sin(t * 0.25) * 60 * dpr * this.params.circleSpacing;
+        const flockCenterY = Math.cos(t * 0.2) * 45 * dpr * this.params.circleSpacing;
+
+        for (let i = 0; i < count; i++) {
+          const pt = pts[i];
+          const drift1X = Math.sin(t * 0.6 * pt.speedX + pt.seedX) * 55 * dpr * this.params.circleSpacing;
+          const drift1Y = Math.cos(t * 0.5 * pt.speedY + pt.seedY) * 55 * dpr * this.params.circleSpacing;
+          const drift2X = Math.cos(t * 0.25 + pt.seedY * 0.5) * 35 * dpr * this.params.circleSpacing;
+          const drift2Y = Math.sin(t * 0.35 + pt.seedX * 0.5) * 35 * dpr * this.params.circleSpacing;
+
+          pt.x = pt.baseX + flockCenterX + drift1X + drift2X;
+          pt.y = pt.baseY + flockCenterY + drift1Y + drift2Y;
+        }
+      }
+
+      updateState(dt) {
+        this.phaseElapsedTime += dt;
+
+        switch (this.currentState) {
+          case STATE.GROWING:
+            if (this.phaseElapsedTime >= this.params.expandDuration) {
+              this.currentState = STATE.PAUSED_MAX; this.phaseElapsedTime = 0;
+            }
+            break;
+          case STATE.PAUSED_MAX:
+            if (this.phaseElapsedTime >= this.params.holdDuration) {
+              this.currentState = STATE.SHRINKING; this.phaseElapsedTime = 0;
+            }
+            break;
+          case STATE.SHRINKING:
+            if (this.phaseElapsedTime >= this.params.shrinkDuration) {
+              this.currentState = STATE.PAUSED_MIN; this.phaseElapsedTime = 0;
+            }
+            break;
+          case STATE.PAUSED_MIN:
+            if (this.phaseElapsedTime >= this.params.holdDuration) {
+              this.currentState = STATE.GROWING; this.phaseElapsedTime = 0;
+            }
+            break;
+        }
+      }
+
+      updateStatusBadge() {
+        this.statusOverlay.className = 'status-overlay';
+        switch (this.currentState) {
+          case STATE.GROWING:
+            this.statusOverlay.classList.add('growing');
+            this.statusText.textContent = 'Expanding';
+            const growPct = Math.min(100, Math.floor((this.phaseElapsedTime / this.params.expandDuration) * 100));
+            this.statusTimer.textContent = `${growPct}%`;
+            break;
+          case STATE.PAUSED_MAX:
+            this.statusOverlay.classList.add('paused-max');
+            this.statusText.textContent = 'Holding Max';
+            const maxRemain = Math.max(0, this.params.holdDuration - this.phaseElapsedTime).toFixed(1);
+            this.statusTimer.textContent = `${maxRemain}s`;
+            break;
+          case STATE.SHRINKING:
+            this.statusOverlay.classList.add('shrinking');
+            this.statusText.textContent = 'Shrinking';
+            const shrinkPct = Math.min(100, Math.floor((this.phaseElapsedTime / this.params.shrinkDuration) * 100));
+            this.statusTimer.textContent = `${shrinkPct}%`;
+            break;
+          case STATE.PAUSED_MIN:
+            this.statusOverlay.classList.add('paused-min');
+            this.statusText.textContent = 'Holding Min';
+            const minRemain = Math.max(0, this.params.holdDuration - this.phaseElapsedTime).toFixed(1);
+            this.statusTimer.textContent = `${minRemain}s`;
+            break;
+        }
+      }
+
+      getCircleRadiusFactor(distRatio) {
+        const easing = Easing[this.params.easingName] || Easing.easeInOutCubic;
+        const expandDur = this.params.expandDuration; const holdDur = this.params.holdDuration;
+        const shrinkDur = this.params.shrinkDuration;
+        const totalCycle = expandDur + holdDur + shrinkDur + holdDur;
+
+        if (this.params.staggerDelay === 0) {
+          switch (this.currentState) {
+            case STATE.GROWING: return easing(Math.min(1, Math.max(0, this.phaseElapsedTime / expandDur)));
+            case STATE.PAUSED_MAX: return 1.0;
+            case STATE.SHRINKING: return 1.0 - easing(Math.min(1, Math.max(0, this.phaseElapsedTime / shrinkDur)));
+            case STATE.PAUSED_MIN: return 0.0;
+          }
+        }
+
+        let currentGlobalPhaseTime = 0;
+        if (this.currentState === STATE.GROWING) currentGlobalPhaseTime = this.phaseElapsedTime;
+        else if (this.currentState === STATE.PAUSED_MAX) currentGlobalPhaseTime = expandDur + this.phaseElapsedTime;
+        else if (this.currentState === STATE.SHRINKING) currentGlobalPhaseTime = expandDur + holdDur + this.phaseElapsedTime;
+        else if (this.currentState === STATE.PAUSED_MIN) currentGlobalPhaseTime = expandDur + holdDur + shrinkDur + this.phaseElapsedTime;
+
+        const delaySec = distRatio * this.params.staggerDelay * expandDur;
+        let circleTime = (currentGlobalPhaseTime - delaySec) % totalCycle;
+        if (circleTime < 0) circleTime += totalCycle;
+
+        if (circleTime < expandDur) return easing(circleTime / expandDur);
+        else if (circleTime < expandDur + holdDur) return 1.0;
+        else if (circleTime < expandDur + holdDur + shrinkDur) return 1.0 - easing((circleTime - (expandDur + holdDur)) / shrinkDur);
+        else return 0.0;
+      }
+
+      render(timestamp) {
+        const ctx = this.ctx; const width = this.canvas.width; const height = this.canvas.height;
+        const dpr = this.dpr; const theme = Themes[this.params.themeName] || Themes.cyanGlow;
+
+        ctx.save();
+        ctx.fillStyle = theme.bg;
+        ctx.fillRect(0, 0, width, height);
+
+        if (this.params.showGridLines) {
+          ctx.save();
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = theme.gridLine;
+          ctx.lineWidth = 1.5 * dpr;
+
+          const padding = Math.min(width, height) * 0.08;
+          const cx = width / 2; const cy = height / 2;
+          const baseRadiusBound = (Math.min(width, height) - padding * 2) / 2;
+          const maxRadiusBound = baseRadiusBound * this.params.circleSpacing;
+
+          if (this.params.layoutMode === 'grid') {
+            const rows = this.params.gridRows; const cols = this.params.gridCols;
+            const baseAreaW = (width - padding * 2) * this.params.circleSpacing;
+            const baseAreaH = (height - padding * 2) * this.params.circleSpacing;
+            const cellW = baseAreaW / cols; const cellH = baseAreaH / rows;
+            const startX = cx - (cols * cellW) / 2; const startY = cy - (rows * cellH) / 2;
+
+            ctx.beginPath();
+            for (let i = 0; i <= cols; i++) {
+              const x = startX + i * cellW;
+              ctx.moveTo(x, startY); ctx.lineTo(x, startY + rows * cellH);
+            }
+            for (let j = 0; j <= rows; j++) {
+              const y = startY + j * cellH;
+              ctx.moveTo(startX, y); ctx.lineTo(startX + cols * cellW, y);
+            }
+            ctx.stroke();
+          } else {
+            ctx.beginPath();
+            for (let r = 1; r <= 5; r++) ctx.arc(cx, cy, (r / 5) * maxRadiusBound, 0, Math.PI * 2);
+            for (let a = 0; a < 12; a++) {
+              const angle = (a / 12) * Math.PI * 2;
+              ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(angle) * maxRadiusBound, cy + Math.sin(angle) * maxRadiusBound);
+            }
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+
+        const minR = this.params.minRadius * dpr; const maxR = this.params.maxRadius * dpr;
+        const strokeWidth = this.params.strokeWidth * dpr; const glowIntensity = this.params.glowIntensity * dpr;
+
+        ctx.lineWidth = strokeWidth;
+        const pts = this.circlePoints; const count = pts.length;
+
+        for (let i = 0; i < count; i++) {
+          const pt = pts[i];
+          const circleFactor = this.getCircleRadiusFactor(pt.distRatio);
+          let currentRadius = minR + circleFactor * (maxR - minR);
+
+          if (this.params.mouseInteraction && this.mouse.x > 0) {
+            const mdx = pt.x - this.mouse.x; const mdy = pt.y - this.mouse.y;
+            const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+            const maxMouseDist = 180 * dpr;
+            if (mdist < maxMouseDist) {
+              const mouseBoost = (1 - mdist / maxMouseDist) * 30 * dpr;
+              currentRadius += mouseBoost;
+            }
+          }
+
+          currentRadius = Math.max(1, currentRadius);
+
+          let currentStroke = theme.stroke; let currentGlow = theme.glow;
+          if (this.params.themeName === 'aurora') {
+            const timeSec = timestamp * 0.0012; const distOffset = pt.distRatio * 1.5;
+            const hue = (270 + Math.sin(timeSec + distOffset) * 55 + Math.cos(timeSec * 0.7 + i * 0.03) * 25 + 360) % 360;
+            const lightness = 60 + Math.sin(timeSec * 1.5 + i * 0.1) * 12;
+            currentStroke = `hsl(${hue}, 92%, ${lightness}%)`; currentGlow = `hsl(${hue}, 95%, 55%)`;
+          } else if (this.params.themeName === 'rainbowPhase') {
+            const hue = (timestamp * 0.05 + i * 8) % 360;
+            currentStroke = `hsl(${hue}, 90%, 65%)`; currentGlow = `hsl(${hue}, 90%, 60%)`;
+          }
+
+          ctx.shadowColor = currentGlow;
+          ctx.shadowBlur = glowIntensity;
+          ctx.strokeStyle = currentStroke;
+
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, currentRadius, 0, Math.PI * 2);
+          ctx.stroke();
+
+          if (this.params.concentricRings && currentRadius > 25 * dpr) {
+            ctx.shadowBlur = glowIntensity * 0.5;
+            ctx.lineWidth = strokeWidth * 0.5;
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, currentRadius * 0.6, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.lineWidth = strokeWidth;
+          }
+
+          if (this.params.showCenters) {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = theme.centerDot;
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 2.5 * dpr, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        ctx.restore();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      window.app = new CircleAnimationApp();
+    });
+  </script>
+</body>
+</html>
