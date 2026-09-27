@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -28,7 +28,12 @@ h1{font-size:clamp(2.8rem,8vw,6rem);letter-spacing:-.065em;line-height:.98;margi
 .status{font:11px ui-monospace,monospace;letter-spacing:.12em;color:var(--accent);margin-top:45px}
 footer{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;border-top:1px solid #57727a75;padding-top:17px;font:11px ui-monospace,monospace;letter-spacing:.08em;color:#a7b9bc}
 .motion{border:1px solid #526168;background:#061016b8;color:#dce6e9;border-radius:4px;padding:4px 8px;margin-top:-5px;cursor:pointer}
-@media(max-width:650px){.shell{padding:25px 20px}main{padding:100px 0 80px}h1{font-size:clamp(2.6rem,14vw,4rem)}.shade{background:rgba(3,7,10,.85)}}
+@media(max-width:650px){
+  .shell{padding:25px 20px}
+  main{padding:100px 0 80px}
+  h1{font-size:clamp(2.6rem,14vw,4rem)}
+  .shade{background:linear-gradient(90deg,rgba(3,7,10,.71) 0%,rgba(3,7,10,.53) 65%,rgba(3,7,10,.3) 100%),linear-gradient(0deg,rgba(3,7,10,.4),transparent 45%)}
+}
 </style>
 </head>
 <body>
@@ -43,7 +48,7 @@ footer{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;border
 <div class="links"><a href="https://kzhat.hatenablog.com/" target="_blank" rel="noopener noreferrer">Writing ↗</a><a class="muted" href="/lab/">Enter Lab →</a><a class="muted" href="/">Current site ↗</a></div>
 <div class="status">PERSONAL PROFILE / LIVE SIGNAL</div>
 </main>
-<footer><span>© 2026 IGETA Kazuyuki. · Views are my own.</span><button class="motion" id="motion" type="button" aria-pressed="false">動きを止める</button></footer>
+<footer><span>© 2026 IGETA Kazuyuki. · Views are my own.</span><button class="motion" id="motion" type="button" aria-pressed="false">Pause motion</button></footer>
 </div>
 <script>
 (()=>{
@@ -52,7 +57,7 @@ const ctx=canvas.getContext('2d',{alpha:false});
 if(!ctx)return;
 const button=document.getElementById('motion');
 const preference=matchMedia('(prefers-reduced-motion: reduce)');
-let w=0,h=0,dpr=1,nodes=[],edges=[],adj=[],packets=[],raf=0,paused=preference.matches,last=0,clock=0,topologyAt=0,flashAt=0,flashEnd=0;
+let w=0,h=0,dpr=1,nodes=[],edges=[],adj=[],packets=[],raf=0,paused=false,last=0,clock=0,topologyAt=0,flashAt=0,flashEnd=0;
 const pointer={x:0,y:0,active:false};
 const rand=(a,b)=>a+Math.random()*(b-a);
 const packetLimit=34;
@@ -79,9 +84,9 @@ function rebuildAdj(){
 }
 function graph(){
   nodes=[];edges=[];adj=[];packets=[];clock=0;topologyAt=0;flashAt=rand(2,6);flashEnd=0;
-  const cx=w*.73,cy=h*.48,reach=Math.min(w,h);
+  const mobile=w<650,cx=w*(mobile?.62:.73),cy=h*(mobile?.23:.48),reach=Math.min(w,h);
   nodes.push({x:cx,y:cy,vx:0,vy:0,r:4,phase:0,hub:true,orange:false,degree:0,walker:false,wx:0,wy:0,linear:false,lx:0,ly:0,impact:0});
-  const count=w<650?49:99;
+  const count=mobile?49:99;
   for(let i=0;i<count;i++){
     const a=i*2.399963+rand(-.2,.2),r=36+Math.sqrt((i+.5)/count)*reach*.53;
     const x=Math.min(w-8,Math.max(8,cx+Math.cos(a)*r));
@@ -101,7 +106,7 @@ function graph(){
     const n=nodes[i],angle=rand(0,Math.PI*2),speed=rand(8,24);
     n.linear=true;n.lx=Math.cos(angle)*speed;n.ly=Math.sin(angle)*speed;
   }
-  const quantity=w<650?12:24;
+  const quantity=mobile?12:24;
   for(let i=0;i<quantity;i++){
     const e=edges[Math.floor(rand(0,edges.length))],forward=Math.random()<.5;
     packets.push({from:forward?e.a:e.b,to:forward?e.b:e.a,p:Math.random(),speed:rand(42,95),phase:rand(0,7)});
@@ -131,6 +136,7 @@ function updateNodes(dt){
       if(!b.linear){b.vx+=dx*f;b.vy+=dy*f}
     }
   }
+  const cx=w*(w<650?.62:.73),cy=h*(w<650?.23:.48);
   for(const n of nodes){
     if(n.linear){
       n.x+=n.lx*dt;n.y+=n.ly*dt;
@@ -138,7 +144,7 @@ function updateNodes(dt){
       if(n.x<margin){n.x=margin;n.lx=Math.abs(n.lx)}else if(n.x>w-margin){n.x=w-margin;n.lx=-Math.abs(n.lx)}
       if(n.y<margin){n.y=margin;n.ly=Math.abs(n.ly)}else if(n.y>h-margin){n.y=h-margin;n.ly=-Math.abs(n.ly)}
     }else{
-      if(n.hub){n.vx+=(w*.73-n.x)*.004*step;n.vy+=(h*.48-n.y)*.004*step}
+      if(n.hub){n.vx+=(cx-n.x)*.004*step;n.vy+=(cy-n.y)*.004*step}
       if(n.walker){
         const jitter=Math.sqrt(step);
         n.wx=n.wx*.95+(Math.random()-.5)*.055*jitter;
@@ -223,16 +229,20 @@ function drawArcTail(cx,cy,r,start,end,dir){
 }
 function draw(){
   ctx.fillStyle='#05090c';ctx.fillRect(0,0,w,h);
-  const cx=w*.73,cy=h*.48,reach=Math.min(w,h);
+  const mobile=w<650,cx=w*(mobile?.62:.73),cy=h*(mobile?.23:.48),reach=Math.min(w,h);
   ctx.lineWidth=1;
-  ctx.strokeStyle='rgba(96,231,220,.055)';
+  ctx.strokeStyle=mobile?'rgba(125,246,226,.11)':'rgba(96,231,220,.055)';
   for(let x=0;x<w;x+=54){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}
   for(let y=0;y<h;y+=54){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
+  if(mobile){
+    ctx.save();ctx.translate(cx,cy);ctx.scale(1.65,1.65);ctx.translate(-cx,-cy);
+  }
   drawArcTail(cx,cy,reach*.17,clock*.22,Math.PI*1.38+clock*.22,1);
   drawArcTail(cx,cy,reach*.24,Math.PI*.55-clock*.14,Math.PI*1.8-clock*.14,-1);
+  if(mobile)ctx.restore();
   for(const e of edges){
     const a=nodes[e.a],b=nodes[e.b];
-    ctx.strokeStyle=`rgba(110,226,214,${.08+.05*Math.sin(clock*.8+e.phase)})`;
+    ctx.strokeStyle=mobile?`rgba(137,255,231,${.17+.08*Math.sin(clock*.8+e.phase)})`:`rgba(110,226,214,${.08+.05*Math.sin(clock*.8+e.phase)})`;
     ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
   }
   for(const n of nodes){
@@ -240,7 +250,7 @@ function draw(){
     const arrival=n.impact;
     const coreAlpha=n.orange?.83+.17*pulse:n.hub?.82:.35+.28*pulse;
     ctx.fillStyle=n.orange?`rgba(255,188,95,${coreAlpha})`:`rgba(147,249,235,${coreAlpha})`;
-    ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(n.x,n.y,n.r*(mobile?1.25:1),0,Math.PI*2);ctx.fill();
     if(n.orange){
       const glow=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,12);
       glow.addColorStop(0,'rgba(255,191,103,.33)');glow.addColorStop(1,'rgba(255,155,60,0)');
@@ -293,13 +303,13 @@ function tick(now){raf=0;if(paused)return;const dt=Math.min((now-last)/1000||0,.
   if(clock>flashAt){flashEnd=clock+.2;flashAt=clock+rand(3,10)}
   draw();raf=requestAnimationFrame(tick);
 }
-function setPaused(value){paused=value;button.textContent=value?'move again':'stop movement';button.setAttribute('aria-pressed',String(value));cancelAnimationFrame(raf);raf=0;last=0;if(value)draw();else raf=requestAnimationFrame(tick)}
+function setPaused(value){paused=value;button.textContent=value?'Resume motion':'Pause motion';button.setAttribute('aria-pressed',String(value));cancelAnimationFrame(raf);raf=0;last=0;if(value)draw();else raf=requestAnimationFrame(tick)}
 addEventListener('pointermove',e=>{pointer.x=e.clientX;pointer.y=e.clientY;pointer.active=e.pointerType==='mouse'||e.pointerType==='pen'});
 addEventListener('pointerout',e=>{if(!e.relatedTarget)pointer.active=false});
 button.addEventListener('click',()=>setPaused(!paused));
 preference.addEventListener('change',e=>setPaused(e.matches));
 addEventListener('resize',resize);
-resize();setPaused(paused);
+resize();setPaused(false);
 })();
 </script>
 </body>
