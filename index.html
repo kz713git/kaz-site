@@ -1,127 +1,306 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kazuyuki Igeta</title>
-  <meta name="description" content="Personal site and small web experiments.">
-  <style>
-    :root {
-      --bg: #f6f7f4;
-      --text: #1b1d1b;
-      --muted: #5b625d;
-      --line: #d9ddd8;
-      --accent: #1f5c49;
-      --card: #ffffff;
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-        "Hiragino Sans", "Yu Gothic", sans-serif;
-      line-height: 1.75;
-    }
-
-    main {
-      max-width: 780px;
-      margin: 0 auto;
-      padding: 72px 24px 96px;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(2rem, 7vw, 4.3rem);
-      line-height: 1.1;
-      letter-spacing: -0.04em;
-    }
-
-    .lead {
-      margin: 20px 0 0;
-      font-size: 1.15rem;
-      color: var(--muted);
-    }
-
-    section { margin-top: 64px; }
-
-    h2 {
-      margin: 0 0 16px;
-      font-size: 0.85rem;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-    }
-
-    .card {
-      display: block;
-      padding: 20px;
-      margin-top: 12px;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: var(--card);
-      color: inherit;
-      text-decoration: none;
-      transition: transform 0.15s ease, border-color 0.15s ease;
-    }
-
-    .card:hover {
-      transform: translateY(-2px);
-      border-color: var(--accent);
-    }
-
-    .card strong,
-    .card span { display: block; }
-
-    .card span {
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-
-    a { color: var(--accent); }
-
-    footer {
-      margin-top: 72px;
-      color: var(--muted);
-      font-size: 0.85rem;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IGETA Kazuyuki. — Cyber Flow</title>
+<meta name="description" content="Personal profile and experiments by IGETA Kazuyuki.">
+<style>
+:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Hiragino Sans","Yu Gothic",sans-serif;--accent:#83e3d8}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#05090c;color:#e7edf0}
+body{overflow-x:hidden}
+a,button{font:inherit}
+#scene{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.shade{position:fixed;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(4,8,11,.97) 0%,rgba(4,8,11,.86) 45%,rgba(4,8,11,.22) 100%),linear-gradient(0deg,rgba(4,8,11,.66),transparent 36%)}
+.shell{position:relative;z-index:2;max-width:1100px;min-height:100vh;margin:auto;padding:clamp(24px,5vw,64px);display:flex;flex-direction:column}
+.mark{font:600 11px ui-monospace,SFMono-Regular,monospace;letter-spacing:.22em;color:var(--accent)}
+main{width:min(100%,710px);margin:auto 0;padding:95px 0 70px}
+.eyebrow{color:var(--accent);font:600 12px ui-monospace,monospace;letter-spacing:.2em}
+h1{font-size:clamp(2.8rem,8vw,6rem);letter-spacing:-.065em;line-height:.98;margin:25px 0;max-width:780px}
+.lead{font-size:clamp(1.05rem,2vw,1.35rem);line-height:1.65;color:#d1dce0;max-width:650px}
+.bio{max-width:610px;color:#b7c5c9;line-height:1.85;margin:26px 0 40px}
+.links{display:flex;gap:12px;flex-wrap:wrap}
+.links a{display:inline-block;text-decoration:none;padding:12px 17px;border:1px solid var(--accent);color:var(--accent);background:#030e13bb;border-radius:3px;font-size:14px}
+.links a:hover{background:var(--accent);color:#061011}
+.links .muted{border-color:#526168;color:#d1dce0}
+.links a:focus-visible,button:focus-visible{outline:2px solid #fff;outline-offset:4px}
+.status{font:11px ui-monospace,monospace;letter-spacing:.12em;color:var(--accent);margin-top:45px}
+footer{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;border-top:1px solid #57727a75;padding-top:17px;font:11px ui-monospace,monospace;letter-spacing:.08em;color:#a7b9bc}
+.motion{border:1px solid #526168;background:#061016b8;color:#dce6e9;border-radius:4px;padding:4px 8px;margin-top:-5px;cursor:pointer}
+@media(max-width:650px){.shell{padding:25px 20px}main{padding:100px 0 80px}h1{font-size:clamp(2.6rem,14vw,4rem)}.shade{background:rgba(3,7,10,.85)}}
+</style>
 </head>
 <body>
-  <main>
-    <h1>Kazuyuki Igeta</h1>
-
-    <p class="lead">
-      Quality, regulation, safety, and systems.<br>
-      Making complex work clearer and more reliable.
-    </p>
-
-    <section>
-      <h2>About</h2>
-      <p>
-        Quality assurance, regulatory practice, EHS, and practical automation.
-        I am interested in building reliable systems that help people make better decisions.
-      </p>
-    </section>
-
-    <section>
-      <h2>Writing</h2>
-      <a class="card" href="https://kzhat.hatenablog.com/" target="_blank" rel="noopener noreferrer">
-        <strong>Blog</strong>
-        <span>Notes on work, technology, tools, and everyday experiments.</span>
-      </a>
-    </section>
-
-    <section>
-      <h2>Lab</h2>
-      <a class="card" href="/lab/">
-        <strong>Experiments</strong>
-        <span>Small web tools and prototypes — coming soon.</span>
-      </a>
-    </section>
-
-    <footer>© 2026 Kazuyuki Igeta. Views are my own.</footer>
-  </main>
+<canvas id="scene" aria-hidden="true"></canvas><div class="shade" aria-hidden="true"></div>
+<div class="shell">
+<header class="mark">KAZ / PERSONAL INTERFACE</header>
+<main>
+<div class="eyebrow">SYSTEM / CONNECTED</div>
+<h1>IGETA<br>Kazuyuki<span style="color:var(--accent)">.</span></h1>
+<p class="lead">Quality, regulation, safety, and systems.<br>Making complex work clearer and more reliable.</p>
+<p class="bio">Quality assurance, regulatory practice, EHS, and practical automation. I build reliable systems that help people make better decisions.</p>
+<div class="links"><a href="https://kzhat.hatenablog.com/" target="_blank" rel="noopener noreferrer">Writing ↗</a><a class="muted" href="/lab/">Enter Lab →</a><a class="muted" href="/">Current site ↗</a></div>
+<div class="status">PERSONAL PROFILE / LIVE SIGNAL</div>
+</main>
+<footer><span>© 2026 IGETA Kazuyuki. · Views are my own.</span><button class="motion" id="motion" type="button" aria-pressed="false">動きを止める</button></footer>
+</div>
+<script>
+(()=>{
+const canvas=document.getElementById('scene');
+const ctx=canvas.getContext('2d',{alpha:false});
+if(!ctx)return;
+const button=document.getElementById('motion');
+const preference=matchMedia('(prefers-reduced-motion: reduce)');
+let w=0,h=0,dpr=1,nodes=[],edges=[],adj=[],packets=[],raf=0,paused=preference.matches,last=0,clock=0,topologyAt=0,flashAt=0,flashEnd=0;
+const pointer={x:0,y:0,active:false};
+const rand=(a,b)=>a+Math.random()*(b-a);
+const packetLimit=34;
+function route(packet,node,previous,avoid){
+  const choices=adj[node].filter(item=>item.to!==previous&&item.to!==avoid);
+  const candidates=choices.length?choices:adj[node].filter(item=>item.to!==previous);
+  const pool=candidates.length?candidates:adj[node];
+  if(!pool.length)return;
+  const next=pool[Math.floor(Math.random()*pool.length)];
+  packet.from=node;packet.to=next.to;packet.p=0;
+}
+function connect(a,b){
+  const lo=Math.min(a,b),hi=Math.max(a,b);
+  if(lo===hi||edges.some(e=>e.a===lo&&e.b===hi))return;
+  edges.push({a:lo,b:hi,len:Math.hypot(nodes[lo].x-nodes[hi].x,nodes[lo].y-nodes[hi].y),phase:rand(0,7)});
+}
+function rebuildAdj(){
+  adj=nodes.map(()=>[]);
+  nodes.forEach(n=>n.degree=0);
+  edges.forEach((e,i)=>{
+    nodes[e.a].degree++;nodes[e.b].degree++;
+    adj[e.a].push({to:e.b,edge:i});adj[e.b].push({to:e.a,edge:i});
+  });
+}
+function graph(){
+  nodes=[];edges=[];adj=[];packets=[];clock=0;topologyAt=0;flashAt=rand(2,6);flashEnd=0;
+  const cx=w*.73,cy=h*.48,reach=Math.min(w,h);
+  nodes.push({x:cx,y:cy,vx:0,vy:0,r:4,phase:0,hub:true,orange:false,degree:0,walker:false,wx:0,wy:0,linear:false,lx:0,ly:0,impact:0});
+  const count=w<650?49:99;
+  for(let i=0;i<count;i++){
+    const a=i*2.399963+rand(-.2,.2),r=36+Math.sqrt((i+.5)/count)*reach*.53;
+    const x=Math.min(w-8,Math.max(8,cx+Math.cos(a)*r));
+    const y=Math.min(h-8,Math.max(8,cy+Math.sin(a)*r));
+    nodes.push({x,y,vx:0,vy:0,r:rand(1.5,3.5),phase:rand(0,7),hub:false,orange:false,degree:0,walker:false,wx:0,wy:0,linear:false,lx:0,ly:0,impact:0});
+  }
+  for(let i=1;i<nodes.length;i++){
+    const candidates=nodes.map((p,j)=>({j,d:Math.hypot(p.x-nodes[i].x,p.y-nodes[i].y)})).filter(v=>v.j!==i).sort((a,b)=>a.d-b.d);
+    for(const c of candidates.slice(0,i%5===0?3:2))connect(i,c.j);
+  }
+  rebuildAdj();
+  const ids=nodes.map((_,i)=>i).sort(()=>Math.random()-.5);
+  const orangeCount=Math.round(nodes.length*.06),walkCount=Math.round(nodes.length*.10);
+  for(const i of ids.slice(0,orangeCount))nodes[i].orange=true;
+  for(const i of ids.slice(orangeCount,orangeCount+walkCount))nodes[i].walker=true;
+  for(const i of ids.slice(0,orangeCount)){
+    const n=nodes[i],angle=rand(0,Math.PI*2),speed=rand(8,24);
+    n.linear=true;n.lx=Math.cos(angle)*speed;n.ly=Math.sin(angle)*speed;
+  }
+  const quantity=w<650?12:24;
+  for(let i=0;i<quantity;i++){
+    const e=edges[Math.floor(rand(0,edges.length))],forward=Math.random()<.5;
+    packets.push({from:forward?e.a:e.b,to:forward?e.b:e.a,p:Math.random(),speed:rand(42,95),phase:rand(0,7)});
+  }
+}
+function resize(){
+  dpr=Math.min(devicePixelRatio||1,2);w=innerWidth;h=innerHeight;
+  canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);graph();draw();
+}
+function updateNodes(dt){
+  const step=Math.min(dt*60,3);
+  for(const e of edges){
+    const a=nodes[e.a],b=nodes[e.b],dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy)||1;
+    const strength=.0012*(a.degree+b.degree);
+    const f=strength*(dist-e.len*.6);
+    if(!a.linear){a.vx+=dx/dist*f*step;a.vy+=dy/dist*f*step}
+    if(!b.linear){b.vx-=dx/dist*f*step;b.vy-=dy/dist*f*step}
+  }
+  for(let i=0;i<nodes.length;i++){
+    const a=nodes[i];
+    for(let j=i+1;j<nodes.length;j++){
+      const b=nodes[j],dx=b.x-a.x,dy=b.y-a.y,d2=dx*dx+dy*dy;
+      if(d2>4900||d2<.01)continue;
+      const f=(22/(d2+100))*step;
+      if(!a.linear){a.vx-=dx*f;a.vy-=dy*f}
+      if(!b.linear){b.vx+=dx*f;b.vy+=dy*f}
+    }
+  }
+  for(const n of nodes){
+    if(n.linear){
+      n.x+=n.lx*dt;n.y+=n.ly*dt;
+      const margin=24;
+      if(n.x<margin){n.x=margin;n.lx=Math.abs(n.lx)}else if(n.x>w-margin){n.x=w-margin;n.lx=-Math.abs(n.lx)}
+      if(n.y<margin){n.y=margin;n.ly=Math.abs(n.ly)}else if(n.y>h-margin){n.y=h-margin;n.ly=-Math.abs(n.ly)}
+    }else{
+      if(n.hub){n.vx+=(w*.73-n.x)*.004*step;n.vy+=(h*.48-n.y)*.004*step}
+      if(n.walker){
+        const jitter=Math.sqrt(step);
+        n.wx=n.wx*.95+(Math.random()-.5)*.055*jitter;
+        n.wy=n.wy*.95+(Math.random()-.5)*.055*jitter;
+        n.vx+=n.wx*step;n.vy+=n.wy*step;
+      }
+      if(pointer.active){
+        const dx=n.x-pointer.x,dy=n.y-pointer.y,dist=Math.hypot(dx,dy)||1;
+        if(dist<135){const force=.52*(1-dist/135)**2;n.vx+=dx/dist*force*step;n.vy+=dy/dist*force*step}
+      }
+      n.vx*=Math.pow(.87,step);n.vy*=Math.pow(.87,step);
+      const speed=Math.hypot(n.vx,n.vy);
+      if(speed>2){n.vx*=2/speed;n.vy*=2/speed}
+      n.x=Math.max(8,Math.min(w-8,n.x+n.vx*step));
+      n.y=Math.max(8,Math.min(h-8,n.y+n.vy*step));
+    }
+    n.impact=Math.max(0,n.impact-dt/1.25);
+  }
+}
+function rewire(){
+  let changed=false;
+  const next=[];
+  for(const e of edges){
+    const a=nodes[e.a],b=nodes[e.b];
+    const length=Math.hypot(a.x-b.x,a.y-b.y);
+    if(length>Math.max(115,e.len*2.2)&&adj[e.a].length>1&&adj[e.b].length>1){
+      const candidate=nodes.map((n,i)=>({i,d:Math.hypot(n.x-a.x,n.y-a.y)}))
+        .filter(v=>v.i!==e.a&&v.i!==e.b&&v.d<100&& !edges.some(other=>other.a===Math.min(e.a,v.i)&&other.b===Math.max(e.a,v.i)))
+        .sort((u,v)=>u.d-v.d)[0];
+      if(candidate){
+        const lo=Math.min(e.a,candidate.i),hi=Math.max(e.a,candidate.i);
+        next.push({a:lo,b:hi,len:candidate.d,phase:rand(0,7)});
+        changed=true;continue;
+      }
+    }
+    next.push(e);
+  }
+  if(changed){
+    edges=next;
+    rebuildAdj();
+    for(const p of packets){
+      if(!adj[p.from].some(item=>item.to===p.to)){
+        p.p=0;
+        route(p,p.from,p.to);
+      }
+    }
+  }
+}
+function updatePackets(dt){
+  const newPackets=[];
+  for(const packet of packets){
+    let remaining=packet.speed*dt,hops=0;
+    while(remaining>0&&hops<8){
+      const from=nodes[packet.from],to=nodes[packet.to];
+      const length=Math.max(1,Math.hypot(to.x-from.x,to.y-from.y));
+      const distance=(1-packet.p)*length;
+      if(remaining<distance){packet.p+=remaining/length;break}
+      remaining-=distance;
+      const previous=packet.from,arrived=packet.to;
+      nodes[arrived].impact=1;
+      route(packet,arrived,previous);
+      if(adj[arrived].length>=3&&Math.random()<.035&&packets.length+newPackets.length<packetLimit){
+        const branch={from:arrived,to:packet.to,p:0,speed:packet.speed*rand(.8,1.15),phase:rand(0,7)};
+        route(branch,arrived,previous,packet.to);
+        if(branch.to!==packet.to)newPackets.push(branch);
+      }
+      hops++;
+    }
+  }
+  packets.push(...newPackets);
+}
+function drawArcTail(cx,cy,r,start,end,dir){
+  const segments=64,span=end-start;
+  for(let i=0;i<segments;i++){
+    const t=i/segments,a=start+span*t,b=start+span*(i+1)/segments;
+    const progression=dir>0?t:1-t;
+    const opacity=.008+.72*Math.pow(progression,2.7);
+    ctx.lineWidth=1.2+1.8*(1-progression);
+    ctx.strokeStyle=`rgba(153,249,237,${opacity})`;
+    ctx.beginPath();ctx.arc(cx,cy,r,a,b);ctx.stroke();
+  }
+}
+function draw(){
+  ctx.fillStyle='#05090c';ctx.fillRect(0,0,w,h);
+  const cx=w*.73,cy=h*.48,reach=Math.min(w,h);
+  ctx.lineWidth=1;
+  ctx.strokeStyle='rgba(96,231,220,.055)';
+  for(let x=0;x<w;x+=54){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}
+  for(let y=0;y<h;y+=54){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
+  drawArcTail(cx,cy,reach*.17,clock*.22,Math.PI*1.38+clock*.22,1);
+  drawArcTail(cx,cy,reach*.24,Math.PI*.55-clock*.14,Math.PI*1.8-clock*.14,-1);
+  for(const e of edges){
+    const a=nodes[e.a],b=nodes[e.b];
+    ctx.strokeStyle=`rgba(110,226,214,${.08+.05*Math.sin(clock*.8+e.phase)})`;
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+  }
+  for(const n of nodes){
+    const pulse=(1+Math.sin(clock*1.4+n.phase))*.5;
+    const arrival=n.impact;
+    const coreAlpha=n.orange?.83+.17*pulse:n.hub?.82:.35+.28*pulse;
+    ctx.fillStyle=n.orange?`rgba(255,188,95,${coreAlpha})`:`rgba(147,249,235,${coreAlpha})`;
+    ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);ctx.fill();
+    if(n.orange){
+      const glow=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,12);
+      glow.addColorStop(0,'rgba(255,191,103,.33)');glow.addColorStop(1,'rgba(255,155,60,0)');
+      ctx.fillStyle=glow;ctx.beginPath();ctx.arc(n.x,n.y,12,0,Math.PI*2);ctx.fill();
+    }
+    if(arrival>0){
+      const glow=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,19);
+      glow.addColorStop(0,`rgba(255,255,255,${.78*arrival})`);
+      glow.addColorStop(.22,`rgba(218,255,249,${.36*arrival})`);
+      glow.addColorStop(1,'rgba(178,243,233,0)');
+      ctx.fillStyle=glow;ctx.beginPath();ctx.arc(n.x,n.y,19,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=`rgba(255,255,255,${.95*arrival})`;
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r+1.2*arrival,0,Math.PI*2);ctx.fill();
+      const age=1-arrival,radius=5+29*age;
+      const ringAlpha=.38*arrival*arrival;
+      ctx.strokeStyle=`rgba(226,255,250,${ringAlpha})`;
+      ctx.lineWidth=1.2+1.2*arrival;
+      ctx.beginPath();ctx.arc(n.x,n.y,radius,0,Math.PI*2);ctx.stroke();
+      ctx.strokeStyle=`rgba(177,249,235,${ringAlpha*.22})`;
+      ctx.lineWidth=5;
+      ctx.beginPath();ctx.arc(n.x,n.y,radius,0,Math.PI*2);ctx.stroke();
+    }
+  }
+  for(const p of packets){
+    const from=nodes[p.from],to=nodes[p.to];
+    const x=from.x+(to.x-from.x)*p.p,y=from.y+(to.y-from.y)*p.p;
+    const length=Math.max(1,Math.hypot(to.x-from.x,to.y-from.y));
+    const tail=Math.min(.09,13/length),start=Math.max(0,p.p-tail);
+    const sx=from.x+(to.x-from.x)*start,sy=from.y+(to.y-from.y)*start;
+    const twinkle=.42+.58*Math.pow((1+Math.sin(clock*7+p.phase)*Math.sin(clock*4.7+p.phase*1.7))*.5,2);
+    const gradient=ctx.createLinearGradient(sx,sy,x,y);
+    gradient.addColorStop(0,'rgba(102,220,208,0)');
+    gradient.addColorStop(1,`rgba(230,255,251,${.9*twinkle})`);
+    ctx.lineWidth=2;ctx.strokeStyle=gradient;
+    ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(x,y);ctx.stroke();
+    const halo=ctx.createRadialGradient(x,y,0,x,y,7);
+    halo.addColorStop(0,`rgba(244,255,253,${.68*twinkle})`);
+    halo.addColorStop(1,'rgba(155,244,230,0)');
+    ctx.fillStyle=halo;ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=`rgba(244,255,253,${.84*twinkle})`;
+    ctx.beginPath();ctx.arc(x,y,1.9,0,Math.PI*2);ctx.fill();
+  }
+  const flicker=clock<flashEnd?(Math.sin((clock-(flashEnd-.2))*135)>0?1:.08):.75;
+  ctx.fillStyle=`rgba(159,238,227,${flicker})`;ctx.font='11px monospace';
+  ctx.fillText('LINK / ACTIVE',Math.min(w-135,cx+35),Math.max(20,cy-90));
+}
+function tick(now){raf=0;if(paused)return;const dt=Math.min((now-last)/1000||0,.05);last=now;clock+=dt;
+  updateNodes(dt);updatePackets(dt);
+  if(clock-topologyAt>.5){rewire();topologyAt=clock}
+  if(clock>flashAt){flashEnd=clock+.2;flashAt=clock+rand(3,10)}
+  draw();raf=requestAnimationFrame(tick);
+}
+function setPaused(value){paused=value;button.textContent=value?'move again':'stop movement';button.setAttribute('aria-pressed',String(value));cancelAnimationFrame(raf);raf=0;last=0;if(value)draw();else raf=requestAnimationFrame(tick)}
+addEventListener('pointermove',e=>{pointer.x=e.clientX;pointer.y=e.clientY;pointer.active=e.pointerType==='mouse'||e.pointerType==='pen'});
+addEventListener('pointerout',e=>{if(!e.relatedTarget)pointer.active=false});
+button.addEventListener('click',()=>setPaused(!paused));
+preference.addEventListener('change',e=>setPaused(e.matches));
+addEventListener('resize',resize);
+resize();setPaused(paused);
+})();
+</script>
 </body>
 </html>
