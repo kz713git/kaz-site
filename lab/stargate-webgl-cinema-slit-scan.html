@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Star Gate — Cinema Slit Scan</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}
+canvas{width:100%;height:100%;display:block}
+#p{position:fixed;right:10px;top:50%;transform:translateY(-50%);width:250px;max-height:calc(100vh - 16px);overflow:auto;padding:8px 10px;box-sizing:border-box;color:#dcecf2;background:#000b;border:1px solid #bde8ff55;font:10px/1.15 monospace;letter-spacing:.025em;user-select:none;backdrop-filter:blur(8px)}
+#p.hide{display:none}.t{color:#fff;letter-spacing:.12em;margin-bottom:6px}.r{margin:4px 0}.l{display:flex;justify-content:space-between;margin-bottom:2px}
+output{color:#9deaff}input{width:100%;margin:0;accent-color:#9de8ff}
+small{display:block;margin-top:6px;padding-top:6px;border-top:1px solid #bde8ff33;color:#899aa1;font-size:8px;line-height:1.35}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="p">
+  <div class="t">STAR GATE / CINEMA STUDY</div>
+  <div class="r"><div class="l">Field density <output id="densityOut"></output></div><input id="density" type="range" min="4" max="96" value="42"></div>
+  <div class="r"><div class="l">Broad ribbons <output id="ribbonOut"></output></div><input id="ribbon" type="range" min="1" max="42" value="16"></div>
+  <div class="r"><div class="l">Inner slits <output id="slitOut"></output></div><input id="slit" type="range" min="1" max="48" value="20"></div>
+  <div class="r"><div class="l">Light intensity <output id="glowOut"></output></div><input id="glow" type="range" min="10" max="500" value="180"></div>
+  <div class="r"><div class="l">Travel speed <output id="speedOut"></output></div><input id="speed" type="range" min="1" max="100" value="27" step=".5"></div>
+  <div class="r"><div class="l">Central slit <output id="gapOut"></output></div><input id="gap" type="range" min="1" max="28" value="8"></div>
+  <div class="r"><div class="l">Axis hold <output id="holdOut"></output></div><input id="hold" type="range" min="6" max="35" value="18"></div>
+  <div class="r"><div class="l">Axis jitter <output id="jitterOut"></output></div><input id="jitter" type="range" min="0" max="100" value="55"></div>
+  <div class="r"><div class="l">Axis turn time <output id="turnOut"></output></div><input id="turn" type="range" min="0" max="20" value="4"></div>
+  <div class="r"><div class="l">Signal bundle size <output id="bundleOut"></output></div><input id="bundle" type="range" min="10" max="20" value="15"></div>
+  <div class="r"><div class="l">Signal spacing <output id="spacingOut"></output></div><input id="spacing" type="range" min="0" max="100" value="42"></div>
+  <div class="r"><div class="l">Length variation <output id="lengthOut"></output></div><input id="length" type="range" min="0" max="100" value="65"></div>
+  <div class="r"><div class="l">Signal randomness <output id="randomnessOut"></output></div><input id="randomness" type="range" min="0" max="100" value="72"></div>
+  <div class="r"><div class="l">Red strata spacing <output id="strataGapOut"></output></div><input id="strataGap" type="range" min="0" max="100" value="72"></div>
+  <div class="r"><div class="l">Red pulse density <output id="redPulseOut"></output></div><input id="redPulse" type="range" min="0" max="100" value="62"></div>
+  <div class="r"><div class="l">Gaussian signals <output id="gaussianOut"></output></div><input id="gaussian" type="range" min="0" max="100" value="54"></div>
+  <div class="r"><div class="l">Soft gasket pattern <output id="gasketOut"></output></div><input id="gasket" type="range" min="0" max="100" value="34"></div>
+  <div class="r"><div class="l">Ribbon width <output id="ribbonWidthOut"></output></div><input id="ribbonWidth" type="range" min="0" max="100" value="72"></div>
+  <div class="r"><div class="l">Ribbon Morse pulse <output id="morseOut"></output></div><input id="morse" type="range" min="0" max="100" value="58"></div>
+  <div class="r"><div class="l">White glare bloom <output id="bloomOut"></output></div><input id="bloom" type="range" min="0" max="100" value="38"></div>
+  <div class="r"><div class="l">Plane asymmetry <output id="asymmetryOut"></output></div><input id="asymmetry" type="range" min="0" max="100" value="62"></div>
+  <div class="r"><div class="l">Star density <output id="starDensityOut"></output></div><input id="starDensity" type="range" min="0" max="100" value="36"></div>
+  <div class="r"><div class="l">Star speed <output id="starSpeedOut"></output></div><input id="starSpeed" type="range" min="1" max="100" value="68"></div>
+  <div class="r"><div class="l">Nebula density <output id="nebulaDensityOut"></output></div><input id="nebulaDensity" type="range" min="0" max="100" value="48"></div>
+  <div class="r"><div class="l">Nebula speed <output id="nebulaSpeedOut"></output></div><input id="nebulaSpeed" type="range" min="1" max="100" value="23"></div>
+  <div class="r"><div class="l">Prominence burst <output id="prominenceOut"></output></div><input id="prominence" type="range" min="0" max="100" value="58"></div>
+  <div class="r"><div class="l">Prominence speed <output id="prominenceSpeedOut"></output></div><input id="prominenceSpeed" type="range" min="1" max="100" value="76"></div>
+  <div class="r"><div class="l">Burst spread <output id="burstSpreadOut"></output></div><input id="burstSpread" type="range" min="0" max="100" value="64"></div>
+  <div class="r"><div class="l">Mode hold (seconds) <output id="modeHoldOut"></output></div><input id="modeHold" type="range" min="12" max="24" value="18"></div>
+  <div class="r"><div class="l">Mode transition <output id="modeFadeOut"></output></div><input id="modeFade" type="range" min="2" max="4" value="3"></div>
+  <small>[1] Green Signal　[2] Red Strata　[3] Ribbon Burst　[4] Prominence Collapse<br>[A] Shared / all scenes　Space pause　F fullscreen　H hide</small>
+</div>
+<script>
+(()=>{
+const c=document.querySelector('#c'),g=c.getContext('webgl',{antialias:false,powerPreference:'high-performance'});
+if(!g){document.body.innerHTML='<pre style="color:#f99;padding:2rem">WebGL is required.</pre>';return}
+const P={density:42,ribbon:16,slit:20,glow:180,speed:27,gap:8,hold:18,jitter:55,turn:4,bundle:15,spacing:42,length:65,randomness:72,strataGap:72,redPulse:62,gaussian:54,gasket:34,ribbonWidth:72,morse:58,bloom:38,asymmetry:62,starDensity:36,starSpeed:68,nebulaDensity:48,nebulaSpeed:23,prominence:58,prominenceSpeed:76,burstSpread:64,modeHold:18,modeFade:3};
+for(const k in P){const e=document.querySelector('#'+k),o=document.querySelector('#'+k+'Out');const f=()=>{P[k]=+e.value;o.textContent=k==='turn'?(P[k]/10).toFixed(1)+'s':k==='hold'?P[k]+'s':P[k]};e.oninput=f;f()}
+const sceneTags={density:'[1,2,3,4]',ribbon:'[1,3]',slit:'[1,2]',glow:'[A]',speed:'[A]',gap:'[A]',hold:'[A]',jitter:'[A]',turn:'[A]',bundle:'[1]',spacing:'[1]',length:'[1]',randomness:'[1]',strataGap:'[2]',redPulse:'[2]',gaussian:'[2]',gasket:'[2]',ribbonWidth:'[3]',morse:'[3]',bloom:'[A]',asymmetry:'[A]',starDensity:'[1,2,3,4]',starSpeed:'[1,2,3,4]',nebulaDensity:'[2,3,4]',nebulaSpeed:'[2,3,4]',prominence:'[4]',prominenceSpeed:'[4]',burstSpread:'[4]'};
+for(const k in sceneTags){const label=document.querySelector('#'+k)?.previousElementSibling;if(label)label.firstChild.textContent=sceneTags[k]+' '+label.firstChild.textContent}
+const V=`attribute vec2 a;varying vec2 u;void main(){u=a*.5+.5;gl_Position=vec4(a,0.,1.);}`;
+const F=`precision highp float;
+varying vec2 u;uniform vec2 R;uniform float T,A,D,RB,S,G,V,GP,M,BS,SP,LV,SR,MODE,RG,WB,ASY,RP,GS,GT,RW,MO,SD,SS,ND,NS,PB,PS,BD;
+float h(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1.,0.)),f.x),mix(h(i+vec2(0.,1.)),h(i+1.),f.x),f.y);}
+float fb(vec2 p){return .58*n(p)+.27*n(p*2.02+6.1)+.15*n(p*4.13+19.5);}
+mat2 rt(float a){float s=sin(a),c=cos(a);return mat2(c,-s,s,c);}
+vec3 greenPal(float q){if(q<.18)return vec3(0.,.18,.13);if(q<.43)return vec3(0.,.86,.56);if(q<.66)return vec3(.04,.83,1.);if(q<.84)return vec3(.22,1.,.76);return vec3(.94,1.,.91);}
+float gaussian(float x,float width){float d=(x-.5)/max(.002,width);return exp(-d*d*2.6);}
+float gasket(vec2 p){
+ float keep=1.;
+ for(int i=0;i<5;i++){
+  vec2 cell=floor(p*exp2(float(i+1)));
+  float hole=step(.5,mod(cell.x,2.))*step(.5,mod(cell.y,2.));
+  keep*=1.-hole*.78;
+ }
+ return keep;
+}
+void main(){
+vec2 p=rt(A)*(u-.5);p.x*=R.x/R.y;float gap=GP/R.y,ay=abs(p.y),side=p.y<0.?-1.:1.;
+if(ay<gap){float e=smoothstep(gap*.4,gap,ay);vec3 core=mix(vec3(.72,.98,.88),vec3(1.,.24,.08),M);gl_FragColor=vec4(core*e*.35,1.);return;}
+float d=clamp((ay-gap)/(.5-gap),.002,1.);float z=1./d;
+
+float asym=ASY*.01;
+float gx=p.x/d+side*asym*(.35+fb(vec2(z*.025,side))*.28);
+float gz=z+T*V*(.60+side*asym*.16)+side*asym*fb(vec2(p.x*2.,z*.02))*2.;
+vec2 gq=vec2(gx*D*.18,gz*.31);
+gq+=vec2(fb(vec2(gq.y*.12,gq.x*.17))-.5,fb(gq*.11+3.7)-.5)*1.45;
+float macro=sin(gx*(.86+RB*.11)+fb(vec2(gz*.045,gx*.08))*7.);
+float ribbon=1.-smoothstep(.24,.62,abs(macro)),bank=fb(vec2(gx*.095,gz*.033));
+float lane=gq.x,line=1.-smoothstep(.022,.045+S*.002,abs(fract(lane)-.5));
+float sid=floor(gq.x*1.71)+floor(gq.y*.31)*17.,seed=h(vec2(sid,floor(gz*.17)));
+float ss=mix(.35,4.8,seed),packet=pow(.5+.5*sin(gz*ss+T*V*mix(.30,1.80,seed)+seed*6.28318),mix(2.,12.,h(vec2(sid,3.1))));
+float dropout=step(mix(.14,.65,seed),h(vec2(sid,floor(gz*.48)))),slit=line*packet*dropout;
+float edge=1.-smoothstep(.02,.13,abs(fract(gq.x*.24+fb(gq*.08))-.5)),pulse=.45+.55*sin(T*3.4+gz*.75+fb(gq*.09)*5.);
+vec3 gc=greenPal(fract(bank*.85+.16+side*asym*.12));vec3 colG=gc*(.055+.21*bank)*G*.01;
+colG+=gc*ribbon*(.14+.28*bank)*G*.01;colG+=gc*slit*(.42+.60*ribbon)*G*.01;
+colG+=vec3(.92,1.,.95)*pow(slit,3.)*(.38+.55*pulse);colG+=gc*edge*ribbon*.10;
+float far=exp(-d*9.);colG+=mix(gc,vec3(.65,1.,.88),.5)*far*(.22+.32*G*.01);
+colG*=.52+.48*smoothstep(1.40,.08,abs(gx));
+for(int bi=0;bi<20;bi++){
+ float bf=float(bi);if(bf>=BS)continue;
+ float seed=h(vec2(floor(gq.x*.22)+bf*17.3,floor(gz*.13)+bf*3.1));
+ float offset=(seed-.5)*mix(.035,.34,SP*.01);
+ float member=fract(gz*(.10+seed*.22)+seed*13.7+T*V*.008*(.55+seed*1.7));
+ float duty=mix(.12,.9,LV*.01)*(mix(.65,1.35,seed));
+ float pulseMember=1.-smoothstep(duty,duty+.08,member);
+ float dropout=step(mix(.03,.52,SR*.01),h(vec2(floor(gz*.21)+bf*2.7,floor(gx*.3)+bf)));
+ float width=mix(.006,.032,seed)*mix(.7,1.5,SR*.01);
+ float memberLine=1.-smoothstep(width,width+.018,abs(fract(gq.x+offset)-.5));
+ colG+=mix(gc,vec3(.72,1.,.92),.55)*memberLine*pulseMember*dropout*(.15+.35*seed);
+}
+
+float rx=p.x/d+side*asym*.22,rz=z+T*V*(.95-side*asym*.12)+side*asym*fb(vec2(p.x*.8,z*.03))*1.6;float fog=fb(vec2(rx*.065,rz*.025+side*asym*.03));
+float wave=sin(rz*.34+fb(vec2(rx*.06,rz*.02))*8.),strata=1.-smoothstep(.22,.78,abs(wave));
+float cut=smoothstep(.15,.62,fb(vec2(rx*.14,rz*.055)));
+float redFrequency=mix(.105,.022,RG*.01);
+float beam=1.-smoothstep(.018,.035,abs(fract(rx*redFrequency+fb(vec2(rz*.04,rx*.1))*.18)-.5));
+float bid=floor(rz*.18),bs=10.+floor(h(vec2(floor(rx*.20),bid))*11.);
+float member=floor(fract(rz*.18)*bs),ms=h(vec2(floor(rx*.20)*31.+member,bid));
+float ml=mix(.12,.92,ms),mp=fract(rz*mix(.45,4.8,ms)+T*V*mix(.15,1.40,ms));
+float rp=smoothstep(0.,.045,mp)*(1.-smoothstep(ml,ml+.06,mp));
+vec3 red=side<0.?vec3(1.,.008,.035):vec3(.72,.004,.018),pink=side<0.?vec3(1.,.035,.30):vec3(1.,.015,.16),orange=side<0.?vec3(1.,.16,.012):vec3(1.,.08,.006),gold=vec3(1.,.65,.08);
+vec3 rc=mix(red,pink,fog);rc=mix(rc,orange,strata*.7);rc=mix(rc,gold,beam*.35);
+float strataPulse=1.-smoothstep(.06,.22,abs(fract(rz*.065+fb(vec2(rx*.025,rz*.02))*.12)-.5));
+float redSignalFreq=mix(.42,1.85,RP*.01);
+float redSignalX=fract(rx*redSignalFreq+rz*.018+fb(vec2(rz*.025,rx*.04))*.22);
+float gaussianPulse=gaussian(redSignalX,mix(.11,.028,GS*.01));
+float pulseGate=.45+.55*step(.5,h(vec2(floor(rz*.12),floor(rx*.18))));
+float softGasket=gasket(vec2(rx*.045+rz*.012,rz*.055-rx*.008));
+vec3 colR=rc*(.20+.75*strata+.22*fog)*G*.01;
+colR+=rc*beam*(.30+.70*strataPulse)*(.35+.007*G);
+colR+=rc*beam*rp*cut*(.25+.45*G*.01);
+colR+=mix(orange,vec3(1.,.86,.42),gaussianPulse)*gaussianPulse*pulseGate*(.22+.008*G);
+colR+=mix(red,orange,softGasket)*softGasket*GT*.006*exp(-d*1.4);
+colR+=vec3(1.,.92,.70)*pow(beam*rp,5.)*.9;colR+=mix(pink,vec3(1.,.95,.78),.8)*exp(-d*14.)*(.45+.45*G*.01);
+colR*=.35+.65*smoothstep(1.6,.12,abs(rx));
+vec3 colB=vec3(0.);
+float ribbonWave=sin(rx*.9+fb(vec2(rz*.06,rx*.05))*8.+T*.45);
+float ribbonField=1.-smoothstep(.08,.96,abs(ribbonWave));
+float ribbonWidthMask=pow(max(0.,ribbonField),mix(1.8,.45,RW*.01));
+float ribbonBranch=fb(vec2(rx*.13,rz*.025)+vec2(T*.03,-T*.01));
+float morseClock=fract(rz*.075+T*.018);
+float morseCode=step(.22,morseClock)*step(morseClock,.36)+step(.48,morseClock)*step(morseClock,.88);
+float morsePulse=mix(1.,morseCode,MO*.01);
+vec3 ribbonColor=mix(side<0.?vec3(1.,.03,.58):vec3(1.,.38,.02),side<0.?vec3(.02,.56,1.):vec3(.18,1.,.42),smoothstep(-.2,.7,ribbonBranch));
+colB+=ribbonColor*ribbonWidthMask*morsePulse*(.42+.009*G);
+colB+=vec3(1.,.72,.06)*pow(max(0.,sin(rx*2.2+rz*.08+T*.8)),8.)*.32*morsePulse;
+float filament=1.-smoothstep(.018,.07,abs(sin(rx*.7+fb(vec2(rz*.04,rx*.08))*5.+T*.18)));
+vec3 colP=vec3(.02,.035,.025)*exp(-d*2.);
+colP+=mix(vec3(.04,.18,.08),vec3(1.,.18,.04),fb(vec2(rx*.08,rz*.035)))*filament*exp(-d*3.)*(.15+.5*G*.01);
+float starZ=gz+T*SS*.018;
+vec2 starCell=floor(vec2(gx*.22,starZ*.16));
+float starSeed=h(starCell);
+float starGate=step(1.-SD*.008,starSeed);
+float starPhase=fract(starZ*(.28+starSeed*.8)+starSeed*17.1);
+float starPulse=1.-smoothstep(.02,.12,abs(starPhase-.5));
+float starLane=1.-smoothstep(.018,.065,abs(fract(gx*.34+starSeed*7.3)-.5));
+vec3 starLayer=vec3(1.,.9,.72)*starGate*starPulse*starLane*(.2+.009*G)*exp(-d*.9);
+float nebulaT=rz+T*NS*.012;
+float nebulaField=fb(vec2(rx*.055,nebulaT*.018)+vec2(T*NS*.004,-T*NS*.002));
+float nebulaCloud=smoothstep(.23,.78,nebulaField)*(.35+.65*fb(vec2(rx*.12,nebulaT*.035)));
+vec3 nebulaLayer=mix(vec3(.16,.015,.012),vec3(.95,.12,.045),fb(vec2(rx*.035,nebulaT*.022)))*nebulaCloud*(.025+.005*ND)*exp(-d*.45);
+float burstPhase=fract(rz*.045+T*PS*.022+fb(vec2(rx*.06,rz*.02))*.2);
+float burstWave=1.-smoothstep(.04,.28,abs(burstPhase-.5));
+float burstArc=abs(sin(rx*(.55+BD*.018)+rz*.025+fb(vec2(rz*.04,rx*.06))*5.));
+float burstSpread=pow(max(0.,burstArc),mix(12.,2.,BD*.01));
+float burstExpand=exp(-abs(rx-(sin(T*PS*.014+rz*.02)*(.18+BD*.006)))*mix(14.,2.,BD*.01));
+vec3 prominenceLayer=mix(vec3(1.,.08,.015),vec3(1.,.72,.18),burstArc)*burstWave*burstSpread*burstExpand*(.18+.008*PB)*exp(-d*.7);
+colG+=starLayer+nebulaLayer*.35+prominenceLayer*.18;
+colR+=starLayer*.45+nebulaLayer+prominenceLayer*.35;
+colB+=starLayer*.8+nebulaLayer*.55+prominenceLayer*.5;
+colP+=starLayer*.18+nebulaLayer*.12+prominenceLayer*1.8;
+vec3 current=MODE<.5?colG:MODE<1.5?colR:MODE<2.5?colB:colP;
+vec3 nextMode=MODE<.5?colR:MODE<1.5?colB:MODE<2.5?colP:colG;
+vec3 col=mix(current,nextMode,M);col+= (h(gl_FragCoord.xy+fract(T)*19.)-.5)*.018;
+col*=.68+G*.006;
+col=1.-exp(-col*(1.35+.20*(1.-M)));
+float peak=max(max(col.r,col.g),col.b);
+float glare=pow(clamp(peak,0.,1.),mix(5.,1.8,WB*.01));
+col+=vec3(1.,.97,.88)*glare*WB*.012;
+gl_FragColor=vec4(min(col,1.),1.);
+}`;
+function sh(t,s){const z=g.createShader(t);g.shaderSource(z,s);g.compileShader(z);if(!g.getShaderParameter(z,g.COMPILE_STATUS))throw Error(g.getShaderInfoLog(z));return z}
+let p;try{p=g.createProgram();g.attachShader(p,sh(g.VERTEX_SHADER,V));g.attachShader(p,sh(g.FRAGMENT_SHADER,F));g.linkProgram(p);if(!g.getProgramParameter(p,g.LINK_STATUS))throw Error(g.getProgramInfoLog(p))}catch(e){document.body.innerHTML='<pre style="color:#f99;padding:2rem">'+e.message+'</pre>';return}
+g.useProgram(p);const b=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,b);g.bufferData(g.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),g.STATIC_DRAW);
+const a=g.getAttribLocation(p,'a');g.enableVertexAttribArray(a);g.vertexAttribPointer(a,2,g.FLOAT,false,0,0);
+const U={};['R','T','A','D','RB','S','G','V','GP','M','BS','SP','LV','SR','MODE','RG','WB','ASY','RP','GS','GT','RW','MO','SD','SS','ND','NS','PB','PS','BD'].forEach(k=>U[k]=g.getUniformLocation(p,k));
+let W,H,paused=false,at=0,off=0;function rs(){const d=Math.min(devicePixelRatio||1,1.25);W=innerWidth*d;H=innerHeight*d;c.width=W;c.height=H;g.viewport(0,0,W,H)}addEventListener('resize',rs);rs();
+let ax=0,nx=0,st=-99,on=false,id=1;const fr=x=>x-Math.floor(x),rd=x=>fr(Math.sin(x*127.1)*43758.5),cl=(x,a,b)=>Math.max(a,Math.min(b,x));
+function sch(t){const s=P.hold*P.jitter/100*.6;nx=t+Math.max(4,P.hold+(rd(id++)-.5)*s*2)}
+function angle(t){if(!nx)sch(t);if(!on&&t>=nx){on=true;st=t}const d=Math.max(.02,P.turn/10);if(on){const q=cl((t-st)/d,0,1),e=q<.5?2*q*q:1-Math.pow(-2*q+2,2)/2;if(q>=1){ax=1-ax;on=false;sch(t)}return(ax+e)*1.5707963}return ax*1.5707963}
+let material=0,materialStart=0,materialNext=18,materialChanging=false,materialFade=3;
+function materialState(t){
+ if(!materialNext)materialNext=t+P.modeHold;
+ if(!materialChanging&&t>=materialNext){materialChanging=true;materialStart=t;materialFade=P.modeFade}
+ if(materialChanging){const q=cl((t-materialStart)/materialFade,0,1);const e=q*q*(3.-2.*q);if(q>=1){material=(material+1)%4;materialChanging=false;materialNext=t+P.modeHold*(.72+rd(material+id++)*.56);return [material,0]}return [material,e]}
+ return [material,0];
+}
+function go(now){if(!paused){const t=(now-off)/1000;const ms=materialState(t);g.uniform2f(U.R,W,H);g.uniform1f(U.T,t);g.uniform1f(U.A,angle(t));g.uniform1f(U.D,P.density);g.uniform1f(U.RB,P.ribbon);g.uniform1f(U.S,P.slit);g.uniform1f(U.G,P.glow);g.uniform1f(U.V,P.speed);g.uniform1f(U.GP,P.gap);g.uniform1f(U.M,ms[1]);g.uniform1f(U.BS,P.bundle);g.uniform1f(U.SP,P.spacing);g.uniform1f(U.LV,P.length);g.uniform1f(U.SR,P.randomness);g.uniform1f(U.MODE,material);g.uniform1f(U.RG,P.strataGap);g.uniform1f(U.WB,P.bloom);g.uniform1f(U.ASY,P.asymmetry);g.uniform1f(U.RP,P.redPulse);g.uniform1f(U.GS,P.gaussian);g.uniform1f(U.GT,P.gasket);g.uniform1f(U.RW,P.ribbonWidth);g.uniform1f(U.MO,P.morse);g.uniform1f(U.SD,P.starDensity);g.uniform1f(U.SS,P.starSpeed);g.uniform1f(U.ND,P.nebulaDensity);g.uniform1f(U.NS,P.nebulaSpeed);g.uniform1f(U.PB,P.prominence);g.uniform1f(U.PS,P.prominenceSpeed);g.uniform1f(U.BD,P.burstSpread);g.drawArrays(g.TRIANGLE_STRIP,0,4)}requestAnimationFrame(go)}
+addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();paused=!paused;if(paused)at=performance.now();else off+=performance.now()-at}if(e.key.toLowerCase()==='h')document.querySelector('#p').classList.toggle('hide');if(e.key.toLowerCase()==='f'){document.fullscreenElement?document.exitFullscreen():c.requestFullscreen().catch(()=>{})}});
+requestAnimationFrame(go);
+})();
+</script>
+</body>
+</html>

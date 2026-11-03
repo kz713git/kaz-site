@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Botanical Fractal Simulation - Three.js</title>
+    <!-- Tailwind CSS for UI Layout -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for Quantitative Visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Three.js & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(51, 65, 85, 0.8);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(71, 85, 105, 1);
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .tooltip {
+            position: relative;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 180px;
+            background-color: #1e293b;
+            color: #cbd5e1;
+            text-align: center;
+            border-radius: 6px;
+            padding: 6px 10px;
+            position: absolute;
+            z-index: 50;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -90px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            border: 1px solid #475569;
+            font-size: 0.75rem;
+            pointer-events: none;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden select-none">
+
+    <!-- CANVAS VIEWPORT (THREE.JS) -->
+    <div class="relative flex-1 h-full bg-slate-950 overflow-hidden">
+        <div id="canvasContainer" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+        
+        <!-- TOP OVERLAY: METRICS -->
+        <div class="absolute top-4 left-4 z-10 flex flex-wrap gap-3">
+            <div class="glass-panel px-4 py-2 rounded-xl flex items-center gap-3 border border-slate-700/50 shadow-lg">
+                <i class="fa-solid fa-seedling text-emerald-400 text-lg"></i>
+                <div>
+                    <div class="text-xs text-slate-400 font-medium">現行世代 (Age)</div>
+                    <div id="metricAge" class="text-lg font-bold text-slate-100">0.00</div>
+                </div>
+            </div>
+            <div class="glass-panel px-4 py-2 rounded-xl flex items-center gap-3 border border-slate-700/50 shadow-lg">
+                <i class="fa-solid fa-code-branch text-cyan-400 text-lg"></i>
+                <div>
+                    <div class="text-xs text-slate-400 font-medium">総枝数 (Branches)</div>
+                    <div id="metricBranches" class="text-lg font-bold text-slate-100">0</div>
+                </div>
+            </div>
+            <div class="glass-panel px-4 py-2 rounded-xl flex items-center gap-3 border border-slate-700/50 shadow-lg">
+                <i class="fa-solid fa-leaf text-lime-400 text-lg"></i>
+                <div>
+                    <div class="text-xs text-slate-400 font-medium">総葉数 (Leaves)</div>
+                    <div id="metricLeaves" class="text-lg font-bold text-slate-100">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CANVAS FLOATING CONTROLS -->
+        <div class="absolute bottom-6 left-6 z-10 flex items-center gap-2 glass-panel p-2 rounded-2xl border border-slate-700/50 shadow-2xl">
+            <button id="btnPlayPause" class="w-12 h-12 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center transition shadow-md active:scale-95">
+                <i class="fa-solid fa-pause text-lg" id="playIcon"></i>
+            </button>
+            <button id="btnReset" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition active:scale-95 tooltip">
+                <i class="fa-solid fa-rotate-left"></i>
+                <span class="tooltiptext">リセット (成長初期化)</span>
+            </button>
+            <div class="h-6 w-[1px] bg-slate-700 mx-1"></div>
+            <button id="btnCameraReset" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition active:scale-95 tooltip">
+                <i class="fa-solid fa-video"></i>
+                <span class="tooltiptext">カメラ視点リセット</span>
+            </button>
+            <button id="btnToggleWind" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 flex items-center justify-center transition active:scale-95 tooltip">
+                <i class="fa-solid fa-wind" id="windIcon"></i>
+                <span class="tooltiptext">風エフェクト ON/OFF</span>
+            </button>
+            <button id="btnToggleSeason" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition active:scale-95 tooltip">
+                <i class="fa-solid fa-seedling text-emerald-400" id="seasonIcon"></i>
+                <span class="tooltiptext">季節切替 (春・夏・秋・冬・桜)</span>
+            </button>
+        </div>
+
+        <!-- TIMELINE SLIDER OVERLAY -->
+        <div class="absolute bottom-6 right-6 left-72 z-10 max-w-xl mx-auto glass-panel px-6 py-3 rounded-2xl border border-slate-700/50 flex items-center gap-4">
+            <span class="text-xs font-semibold text-slate-400 whitespace-nowrap">Time Axis</span>
+            <input type="range" id="sliderTimeline" min="0" max="10" step="0.01" value="0" class="w-full accent-emerald-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+        </div>
+    </div>
+
+    <!-- SIDEBAR: CONTROL & ANALYTICS DASHBOARD -->
+    <div class="w-96 h-full glass-panel border-l border-slate-800 flex flex-col z-20 shadow-2xl">
+        <!-- HEADER -->
+        <div class="p-5 border-b border-slate-800/80 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-tree text-emerald-400 text-xl"></i>
+                <h1 class="font-bold text-slate-100 tracking-wide">3D Botanical Engine</h1>
+            </div>
+            <span class="text-xs font-mono bg-slate-800 text-slate-400 px-2 py-1 rounded-md border border-slate-700">v3D.1</span>
+        </div>
+
+        <!-- TABS -->
+        <div class="flex border-b border-slate-800 bg-slate-900/40 text-xs font-medium text-slate-400">
+            <button id="tabBtnPresets" class="flex-1 py-3 text-center border-b-2 border-emerald-500 text-emerald-400 font-bold transition">プリセット</button>
+            <button id="tabBtnParams" class="flex-1 py-3 text-center border-b-2 border-transparent hover:text-slate-200 transition">パラメーター</button>
+            <button id="tabBtnAnalytics" class="flex-1 py-3 text-center border-b-2 border-transparent hover:text-slate-200 transition">数学・解析</button>
+        </div>
+
+        <!-- TAB CONTENT CONTAINER -->
+        <div class="flex-1 overflow-y-auto p-5 space-y-6">
+
+            <!-- TAB 1: PRESETS -->
+            <div id="tabPresets" class="space-y-4">
+                <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">3Dアルゴリズム構造モデル</h2>
+                <div class="grid grid-cols-1 gap-2.5">
+                    <button class="preset-card text-left p-3.5 rounded-xl border border-slate-700/60 bg-slate-800/40 hover:bg-slate-800 hover:border-emerald-500/50 transition group" data-preset="fibonacci">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-slate-200 group-hover:text-emerald-400">黄金角・フィボナッチ 3D</span>
+                            <span class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800/60 px-2 py-0.5 rounded-full font-mono">Phi 137.5°</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">黄金角(137.5°)に基づく3次元空間への均等葉序・最適受光展開モデル。</p>
+                    </button>
+
+                    <button class="preset-card text-left p-3.5 rounded-xl border border-slate-700/60 bg-slate-800/40 hover:bg-slate-800 hover:border-cyan-500/50 transition group" data-preset="binary">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-slate-200 group-hover:text-cyan-400">立体対掌二分木 (3D Binary)</span>
+                            <span class="text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-800/60 px-2 py-0.5 rounded-full font-mono">Symmetric</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">直交座標軸に沿って幾何学的に交互分岐する美意識重視の対照木。</p>
+                    </button>
+
+                    <button class="preset-card text-left p-3.5 rounded-xl border border-slate-700/60 bg-slate-800/40 hover:bg-slate-800 hover:border-amber-500/50 transition group" data-preset="monopodial">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-slate-200 group-hover:text-amber-400">単軸分枝 (Conifer/杉)</span>
+                            <span class="text-[10px] bg-amber-950 text-amber-300 border border-amber-800/60 px-2 py-0.5 rounded-full font-mono">Monopodial</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">真っ直ぐ伸びる主幹かららせん状に側枝が水平展開する針葉樹モデル。</p>
+                    </button>
+
+                    <button class="preset-card text-left p-3.5 rounded-xl border border-slate-700/60 bg-slate-800/40 hover:bg-slate-800 hover:border-rose-500/50 transition group" data-preset="stochastic">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-slate-200 group-hover:text-rose-400">自然ゆらぎ3D樹 (Stochastic)</span>
+                            <span class="text-[10px] bg-rose-950 text-rose-300 border border-rose-800/60 px-2 py-0.5 rounded-full font-mono">Randomized</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">ガウス分布に基づき分岐角度と向きにリアルな雑乱性を加えた大木。</p>
+                    </button>
+
+                    <button class="preset-card text-left p-3.5 rounded-xl border border-slate-700/60 bg-slate-800/40 hover:bg-slate-800 hover:border-pink-500/50 transition group" data-preset="sakura">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-slate-200 group-hover:text-pink-400">桜樹冠 (Cherry Blossom)</span>
+                            <span class="text-[10px] bg-pink-950 text-pink-300 border border-pink-800/60 px-2 py-0.5 rounded-full font-mono">Decurrent</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">ドーム状に大きく横へ広がる樹冠と華やかな花びらのグラデーション。</p>
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB 2: PARAMETERS -->
+            <div id="tabParams" class="hidden space-y-5">
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs">
+                        <label class="font-medium text-slate-300">分岐角度 (Branch Angle)</label>
+                        <span id="valAngle" class="font-mono text-emerald-400">28.0°</span>
+                    </div>
+                    <input type="range" id="paramAngle" min="5" max="90" step="0.5" value="28" class="w-full accent-emerald-500 bg-slate-800 h-1.5 rounded-lg">
+                </div>
+
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs">
+                        <label class="font-medium text-slate-300">枝長減衰率 (Length Ratio)</label>
+                        <span id="valRatio" class="font-mono text-emerald-400">0.74</span>
+                    </div>
+                    <input type="range" id="paramRatio" min="0.5" max="0.88" step="0.01" value="0.74" class="w-full accent-emerald-500 bg-slate-800 h-1.5 rounded-lg">
+                </div>
+
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs">
+                        <label class="font-medium text-slate-300">幹太さ減衰率 (Thickness Scale)</label>
+                        <span id="valThickness" class="font-mono text-emerald-400">0.70</span>
+                    </div>
+                    <input type="range" id="paramThickness" min="0.4" max="0.9" step="0.01" value="0.70" class="w-full accent-emerald-500 bg-slate-800 h-1.5 rounded-lg">
+                </div>
+
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs">
+                        <label class="font-medium text-slate-300">黄金角 3Dバイアス (Golden Angle Ratio)</label>
+                        <span id="valGolden" class="font-mono text-emerald-400">0.50</span>
+                    </div>
+                    <input type="range" id="paramGolden" min="0" max="1" step="0.01" value="0.5" class="w-full accent-emerald-500 bg-slate-800 h-1.5 rounded-lg">
+                </div>
+
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs">
+                        <label class="font-medium text-slate-300">自然ゆらぎ度 (Stochastic Variance)</label>
+                        <span id="valVariance" class="font-mono text-emerald-400">0.08</span>
+                    </div>
+                    <input type="range" id="paramVariance" min="0" max="0.5" step="0.01" value="0.08" class="w-full accent-emerald-500 bg-slate-800 h-1.5 rounded-lg">
+                </div>
+
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs">
+                        <label class="font-medium text-slate-300">最大再帰深化度 (Max Iterations)</label>
+                        <span id="valDepth" class="font-mono text-emerald-400">7</span>
+                    </div>
+                    <input type="range" id="paramDepth" min="3" max="9" step="1" value="7" class="w-full accent-emerald-500 bg-slate-800 h-1.5 rounded-lg">
+                </div>
+
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs">
+                        <label class="font-medium text-slate-300">向光性/背地性 (Phototropism)</label>
+                        <span id="valPhoto" class="font-mono text-emerald-400">0.02</span>
+                    </div>
+                    <input type="range" id="paramPhoto" min="-0.1" max="0.1" step="0.005" value="0.02" class="w-full accent-emerald-500 bg-slate-800 h-1.5 rounded-lg">
+                </div>
+            </div>
+
+            <!-- TAB 3: MATHEMATICS & ANALYTICS -->
+            <div id="tabAnalytics" class="hidden space-y-5">
+                <div class="glass-panel p-3.5 rounded-xl border border-slate-700/60 bg-slate-800/30">
+                    <div class="text-xs font-semibold text-slate-400 mb-2">3D階層別分枝数分布 (Depth vs Count)</div>
+                    <div class="h-44 w-full">
+                        <canvas id="chartBranches"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-3.5 rounded-xl border border-slate-700/60 bg-slate-800/30">
+                    <div class="text-xs font-semibold text-slate-400 mb-2">3Dフラクタル次元 (Hausdorff Dimension)</div>
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <div class="text-[10px] text-slate-500">Hausdorff-Besicovitch 3D</div>
+                            <div id="fractalDimension" class="text-2xl font-extrabold text-cyan-400 font-mono">D = 2.15</div>
+                        </div>
+                        <div class="text-right text-[10px] text-slate-400 font-mono">
+                            D = -ln(N) / ln(r)<br>
+                            Spatial Volume Fill
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-3.5 rounded-xl border border-slate-700/60 bg-slate-800/30 space-y-2">
+                    <div class="text-xs font-semibold text-slate-400">3D L-System Grammar</div>
+                    <div class="bg-slate-950 p-2.5 rounded-lg font-mono text-[11px] text-emerald-400 border border-slate-800 break-all leading-relaxed" id="lsytemFormula">
+                        Axiom: X<br>
+                        Rules: X &rarr; F[&amp;+X][&amp;-X][^&amp;X]FX, F &rarr; FF
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- THREE.JS SIMULATION CORE ENGINE -->
+    <script>
+        /**
+         * 3D Botanical Engine - Three.js Implementation
+         */
+        class BotanicalEngine3D {
+            constructor(containerId) {
+                this.container = document.getElementById(containerId);
+                
+                // Simulation Parameters
+                this.age = 0.0;
+                this.maxAge = 10.0;
+                this.isPlay = true;
+                this.growthSpeed = 0.02;
+                this.enableWind = true;
+                this.windTime = 0;
+                this.season = 'spring';
+
+                // Morphological Parameters
+                this.params = {
+                    angle: 28.0 * Math.PI / 180,
+                    lengthRatio: 0.74,
+                    thicknessRatio: 0.70,
+                    goldenAngleBias: 0.50,
+                    variance: 0.08,
+                    maxDepth: 7,
+                    phototropism: 0.02,
+                    initialLength: 14,
+                    initialThickness: 1.4
+                };
+
+                // Presets Definition
+                this.presets = {
+                    fibonacci: { angle: 137.5 * Math.PI / 180, lengthRatio: 0.75, thicknessRatio: 0.72, goldenAngleBias: 0.90, variance: 0.02, maxDepth: 7, phototropism: 0.01 },
+                    binary: { angle: 30.0 * Math.PI / 180, lengthRatio: 0.73, thicknessRatio: 0.68, goldenAngleBias: 0.0, variance: 0.0, maxDepth: 7, phototropism: 0.0 },
+                    monopodial: { angle: 45.0 * Math.PI / 180, lengthRatio: 0.62, thicknessRatio: 0.82, goldenAngleBias: 0.2, variance: 0.04, maxDepth: 7, phototropism: 0.05 },
+                    stochastic: { angle: 32.0 * Math.PI / 180, lengthRatio: 0.74, thicknessRatio: 0.70, goldenAngleBias: 0.40, variance: 0.22, maxDepth: 7, phototropism: 0.02 },
+                    sakura: { angle: 38.0 * Math.PI / 180, lengthRatio: 0.76, thicknessRatio: 0.65, goldenAngleBias: 0.60, variance: 0.12, maxDepth: 7, phototropism: -0.01 }
+                };
+
+                // Analytics Stats
+                this.branchCount = 0;
+                this.leafCount = 0;
+                this.branchDepthStats = [];
+
+                this.initThree();
+                this.initLighting();
+                this.initEnvironment();
+                this.initMaterials();
+
+                // Tree Group Container
+                this.treeGroup = new THREE.Group();
+                this.scene.add(this.treeGroup);
+
+                window.addEventListener('resize', () => this.onWindowResize());
+            }
+
+            initThree() {
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x0f172a);
+                this.scene.fog = new THREE.FogExp2(0x0f172a, 0.008);
+
+                this.camera = new THREE.PerspectiveCamera(45, this.container.clientWidth / this.container.clientHeight, 0.1, 1000);
+                this.resetCamera();
+
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.container.appendChild(this.renderer.domElement);
+
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.maxPolarAngle = Math.PI / 2 + 0.05; // Ground limit
+                this.controls.minDistance = 10;
+                this.controls.maxDistance = 150;
+            }
+
+            resetCamera() {
+                this.camera.position.set(0, 20, 50);
+                if (this.controls) {
+                    this.controls.target.set(0, 15, 0);
+                    this.controls.update();
+                }
+            }
+
+            initLighting() {
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                this.scene.add(ambientLight);
+
+                this.sunLight = new THREE.DirectionalLight(0xfffaed, 1.2);
+                this.sunLight.position.set(30, 60, 40);
+                this.sunLight.castShadow = true;
+                this.sunLight.shadow.mapSize.width = 2048;
+                this.sunLight.shadow.mapSize.height = 2048;
+                this.sunLight.shadow.camera.near = 0.5;
+                this.sunLight.shadow.camera.far = 150;
+                const d = 40;
+                this.sunLight.shadow.camera.left = -d;
+                this.sunLight.shadow.camera.right = d;
+                this.sunLight.shadow.camera.top = d;
+                this.sunLight.shadow.camera.bottom = -d;
+                this.scene.add(this.sunLight);
+
+                const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x1e293b, 0.4);
+                this.scene.add(hemiLight);
+            }
+
+            initEnvironment() {
+                // Ground Plane
+                const groundGeo = new THREE.PlaneGeometry(200, 200);
+                const groundMat = new THREE.MeshStandardMaterial({
+                    color: 0x1e293b,
+                    roughness: 0.9,
+                    metalness: 0.1
+                });
+                const ground = new THREE.Mesh(groundGeo, groundMat);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+
+                // Circular Grid Helper
+                const grid = new THREE.GridHelper(100, 40, 0x334155, 0x1e293b);
+                grid.position.y = 0.01;
+                this.scene.add(grid);
+            }
+
+            initMaterials() {
+                // Shared Bark Material
+                this.barkMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x5c4033,
+                    roughness: 0.85,
+                    metalness: 0.1
+                });
+
+                // Shared Leaf Geometries and Materials
+                this.leafGeometry = new THREE.PlaneGeometry(1.2, 1.8);
+                this.leafGeometry.translate(0, 0.9, 0); // Origin at base
+
+                this.leafMaterials = {
+                    spring: new THREE.MeshStandardMaterial({ color: 0x4ade80, side: THREE.DoubleSide, roughness: 0.4 }),
+                    summer: new THREE.MeshStandardMaterial({ color: 0x15803d, side: THREE.DoubleSide, roughness: 0.3 }),
+                    autumn: new THREE.MeshStandardMaterial({ color: 0xeab308, side: THREE.DoubleSide, roughness: 0.5 }),
+                    winter: new THREE.MeshStandardMaterial({ visible: false }),
+                    cherry: new THREE.MeshStandardMaterial({ color: 0xf472b6, side: THREE.DoubleSide, roughness: 0.4 })
+                };
+            }
+
+            // Pseudo Random Generator for Deterministic Structure
+            seededRandom(seed) {
+                const x = Math.sin(seed++) * 10000;
+                return x - Math.floor(x);
+            }
+
+            // Rebuild Entire Tree Mesh Hierarchy based on current parameters and Age
+            buildTree() {
+                // Dispose previous objects
+                while (this.treeGroup.children.length > 0) {
+                    const obj = this.treeGroup.children[0];
+                    this.treeGroup.remove(obj);
+                    this.disposeHierarchy(obj);
+                }
+
+                this.branchCount = 0;
+                this.leafCount = 0;
+                this.branchDepthStats = [];
+
+                // Reconstruct tree starting from root trunk
+                this.generateBranch3D(
+                    this.treeGroup,
+                    this.params.initialLength,
+                    this.params.initialThickness,
+                    0,
+                    42
+                );
+            }
+
+            disposeHierarchy(obj) {
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.children) {
+                    obj.children.forEach(child => this.disposeHierarchy(child));
+                }
+            }
+
+            generateBranch3D(parentGroup, length, thickness, depth, seed) {
+                if (depth > this.params.maxDepth || thickness < 0.05) return;
+
+                const depthGrowthStart = depth;
+                if (this.age < depthGrowthStart) return;
+
+                const currentDepthProgress = Math.min(1.0, this.age - depthGrowthStart);
+                const actualLength = length * currentDepthProgress;
+                const actualThickness = Math.max(0.04, thickness * currentDepthProgress);
+
+                // Branch Pivot Group
+                const branchGroup = new THREE.Group();
+                parentGroup.add(branchGroup);
+
+                // Stats
+                this.branchCount++;
+                this.branchDepthStats[depth] = (this.branchDepthStats[depth] || 0) + 1;
+
+                // Create Trunk Cylinder Mesh
+                const topRadius = actualThickness * this.params.thicknessRatio;
+                const bottomRadius = actualThickness;
+                const cylGeo = new THREE.CylinderGeometry(topRadius, bottomRadius, actualLength, 8);
+                cylGeo.translate(0, actualLength / 2, 0); // Align origin to bottom
+
+                const mesh = new THREE.Mesh(cylGeo, this.barkMaterial);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                branchGroup.add(mesh);
+
+                // Wind Sway Physics
+                if (this.enableWind && depth > 0) {
+                    const swayFreq = this.windTime * 2.0 + depth * 0.5;
+                    const swayAmp = 0.025 * (depth / this.params.maxDepth);
+                    branchGroup.rotation.z += Math.sin(swayFreq) * swayAmp;
+                    branchGroup.rotation.x += Math.cos(swayFreq * 0.8) * swayAmp;
+                }
+
+                // Phototropism
+                if (depth > 0) {
+                    branchGroup.rotation.z -= this.params.phototropism * 0.5;
+                }
+
+                // Add Foliage/Leaves if near terminal depth
+                if (depth >= this.params.maxDepth - 2 && currentDepthProgress > 0.5 && this.season !== 'winter') {
+                    this.addLeaves3D(branchGroup, actualLength, seed);
+                }
+
+                // Recurse Children if segment is fully grown
+                if (currentDepthProgress >= 0.92) {
+                    let childSeed = seed * 1.61803398875;
+                    const nextLength = length * this.params.lengthRatio;
+                    const nextThickness = thickness * this.params.thicknessRatio;
+
+                    // Branching angles computation
+                    const baseAngle = this.params.angle;
+                    const goldenAngle = 137.5 * Math.PI / 180;
+
+                    // Child 1
+                    const rand1 = (this.seededRandom(childSeed) - 0.5) * this.params.variance;
+                    const childGroup1 = new THREE.Group();
+                    childGroup1.position.set(0, actualLength, 0);
+                    childGroup1.rotation.z = baseAngle + rand1;
+                    childGroup1.rotation.y = goldenAngle * this.params.goldenAngleBias * 1;
+                    branchGroup.add(childGroup1);
+                    this.generateBranch3D(childGroup1, nextLength, nextThickness, depth + 1, childSeed + 1);
+
+                    // Child 2
+                    const rand2 = (this.seededRandom(childSeed + 2) - 0.5) * this.params.variance;
+                    const childGroup2 = new THREE.Group();
+                    childGroup2.position.set(0, actualLength, 0);
+                    childGroup2.rotation.z = -baseAngle + rand2;
+                    childGroup2.rotation.y = goldenAngle * this.params.goldenAngleBias * 2 + Math.PI;
+                    branchGroup.add(childGroup2);
+                    this.generateBranch3D(childGroup2, nextLength, nextThickness, depth + 1, childSeed + 3);
+
+                    // Tertiary Branching for High Density Presets
+                    if (this.params.goldenAngleBias > 0.3 || this.params.variance > 0.1) {
+                        const rand3 = (this.seededRandom(childSeed + 4) - 0.5) * this.params.variance;
+                        const childGroup3 = new THREE.Group();
+                        childGroup3.position.set(0, actualLength * 0.85, 0);
+                        childGroup3.rotation.x = baseAngle * 0.9 + rand3;
+                        childGroup3.rotation.y = goldenAngle * 3;
+                        branchGroup.add(childGroup3);
+                        this.generateBranch3D(childGroup3, nextLength * 0.8, nextThickness * 0.8, depth + 1, childSeed + 5);
+                    }
+                }
+            }
+
+            addLeaves3D(parentGroup, branchLength, seed) {
+                const activeMat = this.leafMaterials[this.season];
+                if (!activeMat || !activeMat.visible) return;
+
+                const leafCount = 3;
+                for (let i = 0; i < leafCount; i++) {
+                    const leafMesh = new THREE.Mesh(this.leafGeometry, activeMat);
+                    const randY = this.seededRandom(seed + i) * (Math.PI * 2);
+                    const randZ = 0.3 + this.seededRandom(seed + i + 10) * 0.5;
+                    
+                    leafMesh.position.set(0, branchLength * (0.6 + i * 0.2), 0);
+                    leafMesh.rotation.y = randY;
+                    leafMesh.rotation.z = randZ;
+                    leafMesh.scale.setScalar(0.8 + this.seededRandom(seed + i + 20) * 0.4);
+                    
+                    leafMesh.castShadow = true;
+                    parentGroup.add(leafMesh);
+                    this.leafCount++;
+                }
+            }
+
+            onWindowResize() {
+                this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+            }
+
+            render() {
+                if (this.isPlay) {
+                    if (this.age < this.params.maxDepth) {
+                        this.age += this.growthSpeed;
+                    }
+                    this.windTime += 0.03;
+                }
+
+                // Re-draw 3D mesh structure
+                this.buildTree();
+
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // ==========================================
+        // UI & DASHBOARD INTERACTION INITIALIZATION
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            const engine = new BotanicalEngine3D('canvasContainer');
+
+            // Chart.js Statistics Initialization
+            const ctxChart = document.getElementById('chartBranches').getContext('2d');
+            const branchChart = new Chart(ctxChart, {
+                type: 'bar',
+                data: {
+                    labels: ['D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7'],
+                    datasets: [{
+                        label: '階層別 3D分岐数',
+                        data: [1, 2, 4, 8, 16, 32, 64, 128],
+                        backgroundColor: 'rgba(52, 211, 153, 0.5)',
+                        borderColor: 'rgba(52, 211, 153, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 9 } } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 9 } } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            function updateUI() {
+                document.getElementById('metricAge').innerText = engine.age.toFixed(2);
+                document.getElementById('metricBranches').innerText = engine.branchCount.toLocaleString();
+                document.getElementById('metricLeaves').innerText = engine.leafCount.toLocaleString();
+                document.getElementById('sliderTimeline').value = engine.age;
+
+                if (engine.branchDepthStats.length > 0) {
+                    branchChart.data.datasets[0].data = engine.branchDepthStats.slice(0, 8);
+                    branchChart.update('none');
+                }
+
+                // 3D Hausdorff Dimension Estimation
+                const N = 2.0 + engine.params.goldenAngleBias; 
+                const r = engine.params.lengthRatio;
+                const D = (-Math.log(N) / Math.log(r)).toFixed(2);
+                document.getElementById('fractalDimension').innerText = `D = ${D}`;
+
+                const angleDeg = (engine.params.angle * 180 / Math.PI).toFixed(1);
+                document.getElementById('lsytemFormula').innerHTML = `
+                    <strong>Axiom:</strong> X<br>
+                    <strong>Rules:</strong> X &rarr; F[&amp;+X]${engine.params.goldenAngleBias > 0.2 ? '[&amp;&theta;X]' : ''}[&amp;-X]FX, F &rarr; FF<br>
+                    <strong>Angle:</strong> ${angleDeg}&deg; | <strong>Ratio:</strong> ${engine.params.lengthRatio}
+                `;
+            }
+
+            // Animation Loop
+            function animate() {
+                engine.render();
+                updateUI();
+                requestAnimationFrame(animate);
+            }
+            animate();
+
+            // Play / Pause Button
+            const btnPlayPause = document.getElementById('btnPlayPause');
+            const playIcon = document.getElementById('playIcon');
+            btnPlayPause.addEventListener('click', () => {
+                engine.isPlay = !engine.isPlay;
+                playIcon.className = engine.isPlay ? 'fa-solid fa-pause text-lg' : 'fa-solid fa-play text-lg';
+            });
+
+            // Reset Button
+            document.getElementById('btnReset').addEventListener('click', () => {
+                engine.age = 0.0;
+            });
+
+            // Camera Reset
+            document.getElementById('btnCameraReset').addEventListener('click', () => {
+                engine.resetCamera();
+            });
+
+            // Wind Toggle
+            const btnToggleWind = document.getElementById('btnToggleWind');
+            btnToggleWind.addEventListener('click', () => {
+                engine.enableWind = !engine.enableWind;
+                btnToggleWind.classList.toggle('text-emerald-400', engine.enableWind);
+            });
+
+            // Season Toggle
+            const seasons = ['spring', 'summer', 'autumn', 'winter', 'cherry'];
+            const seasonIcons = {
+                spring: 'fa-solid fa-seedling text-emerald-400',
+                summer: 'fa-solid fa-sun text-amber-400',
+                autumn: 'fa-solid fa-leaf text-amber-500',
+                winter: 'fa-regular fa-snowflake text-cyan-300',
+                cherry: 'fa-solid fa-fan text-pink-400'
+            };
+            document.getElementById('btnToggleSeason').addEventListener('click', () => {
+                const currentIndex = seasons.indexOf(engine.season);
+                engine.season = seasons[(currentIndex + 1) % seasons.length];
+                document.getElementById('seasonIcon').className = seasonIcons[engine.season];
+            });
+
+            // Timeline Slider
+            document.getElementById('sliderTimeline').addEventListener('input', (e) => {
+                engine.age = parseFloat(e.target.value);
+            });
+
+            // Sidebar Tabs Switcher
+            const tabs = [
+                { btn: document.getElementById('tabBtnPresets'), content: document.getElementById('tabPresets') },
+                { btn: document.getElementById('tabBtnParams'), content: document.getElementById('tabParams') },
+                { btn: document.getElementById('tabBtnAnalytics'), content: document.getElementById('tabAnalytics') }
+            ];
+
+            tabs.forEach(tab => {
+                tab.btn.addEventListener('click', () => {
+                    tabs.forEach(t => {
+                        t.btn.classList.remove('border-emerald-500', 'text-emerald-400', 'font-bold');
+                        t.btn.classList.add('border-transparent', 'text-slate-400');
+                        t.content.classList.add('hidden');
+                    });
+                    tab.btn.classList.add('border-emerald-500', 'text-emerald-400', 'font-bold');
+                    tab.btn.classList.remove('border-transparent', 'text-slate-400');
+                    tab.content.classList.remove('hidden');
+                });
+            });
+
+            // Preset Cards Click
+            document.querySelectorAll('.preset-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const presetKey = card.getAttribute('data-preset');
+                    const preset = engine.presets[presetKey];
+                    if (preset) {
+                        Object.assign(engine.params, preset);
+                        updateParamInputs();
+                        engine.age = 0.0;
+                    }
+                });
+            });
+
+            // Parameter Inputs Sync
+            const paramInputs = [
+                { id: 'paramAngle', valId: 'valAngle', prop: 'angle', transform: v => v * Math.PI / 180, display: v => `${parseFloat(v).toFixed(1)}°` },
+                { id: 'paramRatio', valId: 'valRatio', prop: 'lengthRatio', transform: v => parseFloat(v), display: v => parseFloat(v).toFixed(2) },
+                { id: 'paramThickness', valId: 'valThickness', prop: 'thicknessRatio', transform: v => parseFloat(v), display: v => parseFloat(v).toFixed(2) },
+                { id: 'paramGolden', valId: 'valGolden', prop: 'goldenAngleBias', transform: v => parseFloat(v), display: v => parseFloat(v).toFixed(2) },
+                { id: 'paramVariance', valId: 'valVariance', prop: 'variance', transform: v => parseFloat(v), display: v => parseFloat(v).toFixed(2) },
+                { id: 'paramDepth', valId: 'valDepth', prop: 'maxDepth', transform: v => parseInt(v), display: v => parseInt(v) },
+                { id: 'paramPhoto', valId: 'valPhoto', prop: 'phototropism', transform: v => parseFloat(v), display: v => parseFloat(v).toFixed(3) }
+            ];
+
+            paramInputs.forEach(input => {
+                const elem = document.getElementById(input.id);
+                const valElem = document.getElementById(input.valId);
+                elem.addEventListener('input', (e) => {
+                    engine.params[input.prop] = input.transform(e.target.value);
+                    valElem.innerText = input.display(e.target.value);
+                });
+            });
+
+            function updateParamInputs() {
+                document.getElementById('paramAngle').value = (engine.params.angle * 180 / Math.PI).toFixed(1);
+                document.getElementById('valAngle').innerText = `${(engine.params.angle * 180 / Math.PI).toFixed(1)}°`;
+                document.getElementById('paramRatio').value = engine.params.lengthRatio;
+                document.getElementById('valRatio').innerText = engine.params.lengthRatio.toFixed(2);
+                document.getElementById('paramThickness').value = engine.params.thicknessRatio;
+                document.getElementById('valThickness').innerText = engine.params.thicknessRatio.toFixed(2);
+                document.getElementById('paramGolden').value = engine.params.goldenAngleBias;
+                document.getElementById('valGolden').innerText = engine.params.goldenAngleBias.toFixed(2);
+                document.getElementById('paramVariance').value = engine.params.variance;
+                document.getElementById('valVariance').innerText = engine.params.variance.toFixed(2);
+                document.getElementById('paramDepth').value = engine.params.maxDepth;
+                document.getElementById('valDepth').innerText = engine.params.maxDepth;
+                document.getElementById('paramPhoto').value = engine.params.phototropism;
+                document.getElementById('valPhoto').innerText = engine.params.phototropism.toFixed(3);
+            }
+        });
+    </script>
+</body>
+</html>

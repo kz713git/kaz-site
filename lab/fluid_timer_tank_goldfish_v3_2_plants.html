@@ -1,0 +1,2306 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aquarium Timer / Studio Igeta v.3.1</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #030712;
+    display: flex; justify-content: center; align-items: center;
+    color: #fff;
+}
+#canvas-container {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 1; pointer-events: none;
+}
+.container {
+    position: relative; width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 20px; z-index: 2;
+}
+.timer-display {
+    font-size: 22vw; font-weight: 100;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em; line-height: 1;
+    cursor: pointer;
+    text-shadow: 0 0 50px rgba(255,255,255,0.15), 0 6px 25px rgba(0,0,0,0.75);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.timer-display:hover { transform: scale(1.02); }
+.controls {
+    position: absolute; bottom: 5vh;
+    display: flex; align-items: center; gap: 15px; z-index: 3;
+    background: rgba(15,23,42,0.45);
+    padding: 12px 28px; border-radius: 50px;
+    border: 1px solid rgba(255,255,255,0.06);
+    backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    opacity: 0.3;
+    transition: opacity 0.6s ease, background 0.6s ease;
+}
+.controls:hover, .controls:focus-within { opacity: 1; background: rgba(15,23,42,0.85); }
+.controls.dim, .controls.dim:hover, .controls.dim:focus-within {
+    opacity: 0.3; background: rgba(15,23,42,0.45);
+}
+button {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.07);
+    color: #fff; font-size: 15px;
+    padding: 10px 22px; border-radius: 25px;
+    cursor: pointer; transition: all 0.2s ease;
+}
+button:hover {
+    background: rgba(255,255,255,0.15);
+    border-color: rgba(255,255,255,0.25);
+    box-shadow: 0 0 15px rgba(255,255,255,0.1);
+}
+button:active { transform: scale(0.95); }
+.btn-start { background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.3); }
+.btn-start:hover { background: rgba(34,197,94,0.3); border-color: rgba(34,197,94,0.5); }
+.btn-pause { background: rgba(234,179,8,0.15); border-color: rgba(234,179,8,0.3); }
+.btn-pause:hover { background: rgba(234,179,8,0.3); border-color: rgba(234,179,8,0.5); }
+.size-slider-container {
+    display: flex; align-items: center; gap: 10px;
+    padding-left: 15px; margin-left: 5px;
+    border-left: 1px solid rgba(255,255,255,0.15);
+}
+.size-slider-container label { font-size: 12px; color: rgba(255,255,255,0.5); }
+input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    height: 4px; background: rgba(255,255,255,0.15);
+    border-radius: 2px; outline: none; cursor: pointer;
+}
+.size-slider-container input[type="range"] { width: 90px; }
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: rgba(255,255,255,0.9);
+}
+input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px; border: none; border-radius: 50%;
+    background: rgba(255,255,255,0.9);
+}
+.modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 10; opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+.modal.open { opacity: 1; pointer-events: auto; }
+.modal-content {
+    background: rgba(15,23,42,0.6);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 40px; border-radius: 30px; text-align: center;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+    max-width: 420px; width: 88%;
+    transform: scale(0.9);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.modal.open .modal-content { transform: scale(1); }
+.modal h2 { margin-bottom: 25px; font-weight: 300; }
+.inputs { display: flex; justify-content: center; gap: 20px; margin-bottom: 28px; }
+.input-group { display: flex; flex-direction: column; align-items: center; }
+.input-group label { font-size: 12px; color: #94a3b8; margin-bottom: 8px; }
+.input-group input[type="number"] {
+    width: 80px; height: 70px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px; color: #fff;
+    font-size: 28px; text-align: center;
+    font-variant-numeric: tabular-nums;
+    user-select: text;
+}
+.input-group input[type="number"]:focus { outline: none; border-color: #3b82f6; }
+.minute-slider-box { margin-bottom: 32px; }
+.minute-slider-head {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: #94a3b8; margin-bottom: 10px;
+}
+#minuteSlider { width: 100%; }
+.slider-scale {
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 6px;
+}
+.alert-box {
+    position: fixed; top: 30px;
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    color: #fff; padding: 16px 36px; border-radius: 50px;
+    box-shadow: 0 15px 30px rgba(239,68,68,0.4);
+    z-index: 100; font-weight: 600;
+    transform: translateY(-150px); opacity: 0;
+    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+.alert-box.show { transform: translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<div class="container" id="timerContainer">
+    <div class="timer-display" id="timeDisplay" onclick="openSettings()">05:00</div>
+
+    <div class="controls" id="controlsBar">
+        <button id="playPauseBtn" class="btn-start" onclick="toggleAction()">スタート</button>
+        <button onclick="resetTimer()">リセット</button>
+        <button onclick="openSettings()">時間設定</button>
+        <button onclick="toggleFullscreenMode()">全画面</button>
+        <div class="size-slider-container">
+            <label for="fontSizeSlider">サイズ</label>
+            <input type="range" id="fontSizeSlider" min="10" max="38" value="22" step="0.5" oninput="adjustFontSize(this.value)">
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="settingsModal">
+    <div class="modal-content">
+        <h2>タイマー設定</h2>
+        <div class="inputs">
+            <div class="input-group">
+                <label>分</label>
+                <input type="number" id="minutesInput" min="0" max="999" value="5" oninput="syncSliderFromInput()">
+            </div>
+            <div class="input-group">
+                <label>秒</label>
+                <input type="number" id="secondsInput" min="0" max="59" value="0">
+            </div>
+        </div>
+        <div class="minute-slider-box">
+            <div class="minute-slider-head">
+                <span>1分刻みスライダー</span>
+                <span id="sliderValueLabel">5分</span>
+            </div>
+            <input type="range" id="minuteSlider" min="0" max="60" step="1" value="5" oninput="syncInputFromSlider(this.value)">
+            <div class="slider-scale"><span>0</span><span>15</span><span>30</span><span>45</span><span>60</span></div>
+        </div>
+        <div style="display:flex; gap:12px; justify-content:center;">
+            <button class="btn-start" onclick="applyNewTime()">適用</button>
+            <button onclick="closeSettings()">閉じる</button>
+        </div>
+    </div>
+</div>
+
+<div class="alert-box" id="timeUpAlert">時間になりました！</div>
+
+<script>
+/* ================= タイマー状態 ================= */
+let durationSeconds = 300;
+let remainingSeconds = 300;
+let countdownInterval = null;
+let alarmInterval = null;
+let timeUpTimeout = null;
+let isTimerRunning = false;
+let audioCtx = null;
+
+const timeDisplay = document.getElementById('timeDisplay');
+const playPauseBtn = document.getElementById('playPauseBtn');
+const settingsModal = document.getElementById('settingsModal');
+const timeUpAlert = document.getElementById('timeUpAlert');
+const controlsEl = document.getElementById('controlsBar');
+
+/* ================= メニューの自動半透明 ================= */
+const DIM_DELAY_MS = 1200;
+let dimTimer = null;
+function dimControlsSoon() {
+    clearTimeout(dimTimer);
+    dimTimer = setTimeout(() => {
+        if (isTimerRunning) controlsEl.classList.add('dim');
+    }, DIM_DELAY_MS);
+}
+function undimControls() {
+    clearTimeout(dimTimer);
+    controlsEl.classList.remove('dim');
+}
+controlsEl.addEventListener('mouseenter', undimControls);
+controlsEl.addEventListener('touchstart', undimControls, { passive: true });
+
+/* ================= 水槽の寸法（ワールド単位：高さ6） ================= */
+const N = 256;
+const GRAVEL = 0.26;
+// 水槽の左右ガラスを画面の端に寄せる余白（ワールド単位）。0.08 ≒ ガラスの外側が画面端にほぼ接する
+const TANK_EDGE = 0.08;
+const TANK = { halfW: 5.33, xl: -4.8, xr: 4.8, yb: -2.38, levelMin: -2.09, levelMax: 1.95 };
+let fillFrac = 0;
+let targetLevel = -2.09;
+let level = -2.09;
+
+function layoutTank() {
+    const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+    TANK.halfW = aspect * 3;
+    TANK.xl = -TANK.halfW + TANK_EDGE;
+    TANK.xr = TANK.halfW - TANK_EDGE;
+    TANK.yb = -3 + 0.62;
+    TANK.levelMin = TANK.yb + GRAVEL + 0.03;
+    TANK.levelMax = 1.95;
+}
+
+function updateWaterLevelLimits() {
+    layoutTank();
+    const frac = durationSeconds > 0 ? (durationSeconds - remainingSeconds) / durationSeconds : 0;
+    fillFrac = Math.max(0, Math.min(1, frac));
+    targetLevel = TANK.levelMin + fillFrac * (TANK.levelMax - TANK.levelMin);
+}
+
+function adjustFontSize(val) { timeDisplay.style.fontSize = val + 'vw'; }
+
+function refreshDisplay() {
+    const m = Math.floor(remainingSeconds / 60);
+    const s = remainingSeconds % 60;
+    timeDisplay.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    updateWaterLevelLimits();
+}
+
+/* ================= 音 ================= */
+function ensureAudio() {
+    if (!audioCtx || audioCtx.state === 'closed') {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return false;
+        audioCtx = new AC();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return true;
+}
+function createBeepPulse(startTime) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(2048, startTime);
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(0.15, startTime + 0.01);
+    gain.gain.setValueAtTime(0.15, startTime + 0.06);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.08);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + 0.08);
+}
+function playCasioBeep() {
+    try {
+        if (!ensureAudio()) return;
+        const now = audioCtx.currentTime;
+        createBeepPulse(now);
+        createBeepPulse(now + 0.12);
+    } catch (e) { console.log('AudioContext blocked:', e); }
+}
+
+/* ================= タイマー制御 ================= */
+function clearAlertEffects() {
+    timeUpAlert.classList.remove('show');
+    document.body.classList.remove('time-up-active');
+    if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; }
+    if (timeUpTimeout) { clearTimeout(timeUpTimeout); timeUpTimeout = null; }
+}
+function toggleAction() {
+    clearAlertEffects();
+    try { ensureAudio(); } catch (e) { console.log(e); }
+    if (!isTimerRunning) {
+        if (remainingSeconds <= 0) return;
+        isTimerRunning = true;
+        playPauseBtn.textContent = '一時停止';
+        playPauseBtn.className = 'btn-pause';
+        playPauseBtn.blur();
+        dimControlsSoon();
+        countdownInterval = setInterval(() => {
+            remainingSeconds--;
+            refreshDisplay();
+            if (remainingSeconds <= 0) triggerTimeUp();
+        }, 1000);
+    } else {
+        pauseCountdown();
+    }
+}
+function pauseCountdown() {
+    if (countdownInterval) clearInterval(countdownInterval);
+    countdownInterval = null;
+    isTimerRunning = false;
+    playPauseBtn.textContent = 'スタート';
+    playPauseBtn.className = 'btn-start';
+    undimControls();
+}
+function resetTimer() {
+    pauseCountdown();
+    clearAlertEffects();
+    remainingSeconds = durationSeconds;
+    currentWave.fill(0);
+    previousWave.fill(0);
+    foam.fill(0);
+    refreshDisplay();
+}
+
+/* ================= 設定モーダル ================= */
+function syncInputFromSlider(v) {
+    document.getElementById('minutesInput').value = v;
+    document.getElementById('sliderValueLabel').textContent = v + '分';
+}
+function syncSliderFromInput() {
+    let m = parseInt(document.getElementById('minutesInput').value, 10) || 0;
+    if (m < 0) m = 0;
+    document.getElementById('minuteSlider').value = Math.min(60, m);
+    document.getElementById('sliderValueLabel').textContent = m + '分';
+}
+function openSettings() {
+    if (isTimerRunning) pauseCountdown();
+    clearAlertEffects();
+    document.getElementById('minutesInput').value = Math.floor(durationSeconds / 60);
+    document.getElementById('secondsInput').value = durationSeconds % 60;
+    syncSliderFromInput();
+    settingsModal.classList.add('open');
+}
+function closeSettings() { settingsModal.classList.remove('open'); }
+function applyNewTime() {
+    let m = parseInt(document.getElementById('minutesInput').value, 10) || 0;
+    let s = parseInt(document.getElementById('secondsInput').value, 10) || 0;
+    if (m < 0) m = 0;
+    if (s < 0) s = 0;
+    if (s > 59) s = 59;
+    durationSeconds = m * 60 + s;
+    remainingSeconds = durationSeconds;
+    currentWave.fill(0);
+    previousWave.fill(0);
+    foam.fill(0);
+    refreshDisplay();
+    closeSettings();
+}
+function triggerTimeUp() {
+    pauseCountdown();
+    clearAlertEffects();
+    timeUpAlert.classList.add('show');
+    document.body.classList.add('time-up-active');
+    playCasioBeep();
+    let ticks = 0;
+    alarmInterval = setInterval(() => {
+        ticks++;
+        if (ticks < 10) playCasioBeep();
+        else { clearInterval(alarmInterval); alarmInterval = null; }
+    }, 1000);
+    timeUpTimeout = setTimeout(clearAlertEffects, 10000);
+}
+function toggleFullscreenMode() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => console.log('Fullscreen blocked: ' + err.message));
+    } else {
+        document.exitFullscreen();
+    }
+}
+
+
+/* ================= アラーム停止：クリック or 何かキーを押す ================= */
+function isAlarmActive() {
+    return alarmInterval !== null || timeUpAlert.classList.contains('show') || document.body.classList.contains('time-up-active');
+}
+function stopAlarmByUser(e) {
+    if (!isAlarmActive()) return;
+    clearAlertEffects();
+    // 止めるための操作が、他のボタンや時間設定を誤作動させないようにする
+    if (e) { e.stopPropagation(); e.preventDefault(); }
+}
+document.addEventListener('click', stopAlarmByUser, true);
+document.addEventListener('keydown', stopAlarmByUser, true);
+
+/* ================= 水の物理（1D 波 + 泡 + 粒子） ================= */
+let currentWave = new Float32Array(N);
+let previousWave = new Float32Array(N);
+let nextWaveBuf = new Float32Array(N);
+const surfH = new Float32Array(N);
+let foam = new Float32Array(N);
+let foamTmp = new Float32Array(N);
+const fieldData = new Float32Array(N * 4);
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rand = (a, b) => a + Math.random() * (b - a);
+const smooth01 = (x) => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
+const xAt = (i) => TANK.xl + (i / (N - 1)) * (TANK.xr - TANK.xl);
+const idxAt = (x) => clamp(Math.round((x - TANK.xl) / (TANK.xr - TANK.xl) * (N - 1)), 0, N - 1);
+
+function ambientWave(xw, t) {
+    return 0.010 * Math.sin(xw * 1.7 + t * 1.3)
+         + 0.006 * Math.sin(xw * 3.9 - t * 1.9)
+         + 0.0035 * Math.sin(xw * 8.3 + t * 2.7);
+}
+function addImpulse(idx, amp) {
+    for (let k = -4; k <= 4; k++) {
+        const j = idx + k;
+        if (j >= 0 && j < N) currentWave[j] -= amp * Math.exp(-(k * k) / 6);
+    }
+}
+function addFoam(idx, amt) {
+    for (let k = -5; k <= 5; k++) {
+        const j = idx + k;
+        if (j >= 0 && j < N) foam[j] = Math.min(1, foam[j] + amt * Math.exp(-(k * k) / 10));
+    }
+}
+function stepWave() {
+    const c2 = 0.25, damping = 0.989;
+    for (let i = 0; i < N; i++) {
+        const l = currentWave[i > 0 ? i - 1 : i];
+        const r = currentWave[i < N - 1 ? i + 1 : i];
+        let v = 2 * currentWave[i] - previousWave[i] + c2 * (l + r - 2 * currentWave[i]);
+        v = (v - 0.006 * currentWave[i]) * damping;
+        nextWaveBuf[i] = clamp(v, -0.25, 0.25);
+    }
+    const tmp = previousWave;
+    previousWave = currentWave;
+    currentWave = nextWaveBuf;
+    nextWaveBuf = tmp;
+}
+function stepFoam(dt) {
+    const decay = Math.exp(-dt * 0.30);
+    for (let i = 0; i < N; i++) {
+        const l = foam[i > 0 ? i - 1 : i];
+        const r = foam[i < N - 1 ? i + 1 : i];
+        foamTmp[i] = (foam[i] * 0.94 + (l + r) * 0.03) * decay;
+    }
+    const t = foam; foam = foamTmp; foamTmp = t;
+}
+
+/* ---- 粒子（泡 type0 / 飛沫 type1） ---- */
+const MAXP = 900;
+const parts = [];
+function spawnBubble(x, y) {
+    if (parts.length >= MAXP) return;
+    const r = 0.008 + Math.pow(Math.random(), 2.2) * 0.035;
+    parts.push({
+        type: 0, x: x, y: y,
+        vx: (Math.random() - 0.5) * 0.35,
+        vy: -(0.6 + Math.random() * 1.0),
+        r: r, buoy: 1.1 + r * 28, ph: Math.random() * 6.28, age: 0, alpha: 0
+    });
+}
+function burstBubbles(x, y, n) {
+    for (let k = 0; k < n; k++) {
+        if (parts.length >= MAXP) return;
+        const r = 0.006 + Math.pow(Math.random(), 2.0) * 0.022;
+        parts.push({
+            type: 0, x: x + (Math.random() - 0.5) * 0.4, y: y + (Math.random() - 0.5) * 0.3,
+            vx: (Math.random() - 0.5) * 0.3,
+            vy: -0.2 + Math.random() * 0.6,
+            r: r, buoy: 1.1 + r * 28, ph: Math.random() * 6.28, age: 0, alpha: 0
+        });
+    }
+}
+function spawnDroplet(x, y) {
+    if (parts.length >= MAXP) return;
+    parts.push({
+        type: 1, x: x, y: y,
+        vx: (Math.random() - 0.5) * 1.6,
+        vy: 1.4 + Math.random() * 2.4,
+        r: 0.010 + Math.random() * 0.014, ph: 0, age: 0, alpha: 0.95
+    });
+}
+
+let simTime = 0;
+function updateParticles(dt) {
+    const floorY = TANK.yb + GRAVEL + 0.04;
+    for (let i = parts.length - 1; i >= 0; i--) {
+        const p = parts[i];
+        p.age += dt;
+        let remove = false;
+        if (p.type === 0) {
+            p.vy += (p.buoy - p.vy * 2.2) * dt;
+            p.x += (p.vx + 0.05 * Math.sin(simTime * 5 + p.ph)) * dt;
+            p.y += p.vy * dt;
+            if (p.x < TANK.xl + 0.03) { p.x = TANK.xl + 0.03; p.vx = Math.abs(p.vx) * 0.3; }
+            if (p.x > TANK.xr - 0.03) { p.x = TANK.xr - 0.03; p.vx = -Math.abs(p.vx) * 0.3; }
+            const idx = idxAt(p.x);
+            const surfY = level + surfH[idx];
+            if (p.y >= surfY - 0.01) {
+                addFoam(idx, 0.10 + p.r * 3.0);
+                addImpulse(idx, -p.r * 0.05);
+                remove = true;
+            } else {
+                if (p.y < floorY) { p.y = floorY; p.vy = Math.abs(p.vy) * 0.3; }
+                p.alpha = Math.min(1, p.age * 6) * 0.9;
+            }
+        } else {
+            p.vy -= 9.8 * dt;
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            if (p.x < TANK.xl || p.x > TANK.xr) {
+                remove = true;
+            } else {
+                const idx = idxAt(p.x);
+                const surfY = level + surfH[idx];
+                if (p.y < surfY && p.vy < 0) {
+                    addFoam(idx, 0.05);
+                    addImpulse(idx, 0.004);
+                    if (Math.random() < 0.3) spawnBubble(p.x, surfY - 0.02);
+                    remove = true;
+                }
+            }
+        }
+        if (remove) {
+            parts[i] = parts[parts.length - 1];
+            parts.pop();
+        }
+    }
+}
+
+/* ================= 波の反射模様（コースティクス）の強さ =================
+   ★ここの数字だけ変えれば、底の砂利・金魚・水草に落ちる波の光の模様の濃さが一括で変わります。
+     1.00 = v3までの強さ / 0.30 = 今回の設定（30%） / 0.00 = 模様なし
+   0.30 → 0.50 にすると少し濃く、0.15 にするともっと控えめになります。 */
+const CAUSTIC_STRENGTH = 0.25;
+
+/* ================= シェーダー（水槽） ================= */
+const QUAD_VERT = `
+varying vec2 vUv;
+void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+
+const TANK_FRAG = `
+precision highp float;
+uniform float uTime;
+uniform float uAspect;
+uniform float uPx;
+uniform float uLevel;
+uniform float uFill;
+uniform float uStream;
+uniform float uEnergy;
+uniform float uFlash;
+uniform float uExposure;
+uniform vec4 uBox;
+uniform sampler2D uField;
+varying vec2 vUv;
+
+const float NF = 256.0;
+const float CAUSTIC = ${CAUSTIC_STRENGTH.toFixed(3)};
+const float GLASS = 0.07;
+const float GRAVEL = 0.26;
+const float WAVE_NEAR = 0.5;
+//wave depth
+const float WAVE_FAR = 1.5;
+
+float hash(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+}
+float vn(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+float fbm(vec2 p) {
+    float s = 0.0;
+    float a = 0.5;
+    for (int i = 0; i < 4; i++) {
+        s += a * vn(p);
+        p = p * 2.03 + vec2(7.1, 3.7);
+        a *= 0.5;
+    }
+    return s;
+}
+
+vec2 fieldAt(float x) {
+    float u = clamp((x - uBox.x) / (uBox.y - uBox.x), 0.0, 1.0) * (NF - 1.0);
+    float i0 = floor(u);
+    float f = u - i0;
+    float i1 = min(i0 + 1.0, NF - 1.0);
+    vec2 a = texture2D(uField, vec2((i0 + 0.5) / NF, 0.5)).rg;
+    vec2 b = texture2D(uField, vec2((i1 + 0.5) / NF, 0.5)).rg;
+    return mix(a, b, f);
+}
+
+float gTopAt(float x) {
+    return uBox.z + GRAVEL + 0.035 * sin(x * 3.1) + 0.02 * sin(x * 8.3 + 1.0);
+}
+
+vec3 bg(vec2 p) {
+    float t = smoothstep(-3.0, 3.2, p.y);
+    vec3 c = mix(vec3(0.010, 0.022, 0.045), vec3(0.050, 0.095, 0.150), t);
+    vec2 a = p - vec2(-2.9, 1.7);
+    c += vec3(1.0, 0.72, 0.42) * 0.28 * exp(-dot(a, a) * 0.7);
+    vec2 b = p - vec2(3.1, 0.8);
+    c += vec3(0.38, 0.68, 1.0) * 0.26 * exp(-dot(b, b) * 0.55);
+    vec2 g = p * 1.15;
+    vec2 id = floor(g);
+    vec2 f = fract(g) - 0.5;
+    float h = hash(id);
+    vec2 off = (vec2(hash(id + 1.7), hash(id + 5.3)) - 0.5) * 0.5;
+    float r = 0.10 + 0.10 * hash(id + 9.1);
+    float disc = smoothstep(r, r - 0.05, length(f - off));
+    float lamp = step(0.78, h);
+    vec3 lc = mix(vec3(1.0, 0.8, 0.5), vec3(0.5, 0.8, 1.0), hash(id + 3.3));
+    c += lc * disc * lamp * 0.22 * (0.6 + 0.4 * sin(uTime * 0.4 + h * 20.0));
+    return c;
+}
+
+vec3 gravel(vec2 p) {
+    vec2 g = p * 22.0;
+    vec2 id = floor(g);
+    vec2 f = fract(g) - 0.5;
+    vec2 off = (vec2(hash(id + 3.1), hash(id + 7.7)) - 0.5) * 0.4;
+    float r = 0.34 + 0.10 * hash(id);
+    float dist = length(f - off);
+    float stone = smoothstep(r, r - 0.12, dist);
+    vec3 sc = mix(vec3(0.20, 0.17, 0.14), vec3(0.50, 0.44, 0.37), hash(id + 1.7));
+    sc *= 0.6 + 0.4 * smoothstep(r, 0.0, dist);
+    vec3 gap = vec3(0.025, 0.022, 0.018);
+    return mix(gap, sc, stone);
+}
+
+vec3 glassCol(float u, vec3 room, bool wet) {
+    vec3 g = vec3(0.10, 0.24, 0.22) * (0.55 + 0.45 * smoothstep(0.0, 0.6, u));
+    g += vec3(0.55, 0.90, 0.85) * smoothstep(0.14, 0.0, u) * 0.55;
+    g += vec3(0.45, 0.85, 0.90) * smoothstep(0.86, 1.0, u) * 0.40;
+    if (wet) g = g * vec3(0.7, 1.0, 1.15) + vec3(0.0, 0.03, 0.06);
+    return mix(g, room, 0.22);
+}
+
+void main() {
+    vec2 p = vec2((vUv.x - 0.5) * uAspect * 6.0, (vUv.y - 0.5) * 6.0);
+    float xl = uBox.x;
+    float xr = uBox.y;
+    float yb = uBox.z;
+    float x = p.x;
+
+    vec2 fld = fieldAt(x);
+    float wall = min(x - xl, xr - x);
+    float mensc = 0.035 * exp(-max(wall, 0.0) / 0.05);
+    float hs = uLevel + fld.x + mensc;
+    float d = hs - p.y;
+
+    bool inX = (x > xl && x < xr);
+    bool outerX = (x > xl - GLASS && x < xr + GLASS);
+    vec3 c = bg(p);
+
+    if (p.y < yb - GLASS) {
+        float dd = (yb - GLASS) - p.y;
+        c = vec3(0.012, 0.017, 0.024) + vec3(0.01, 0.015, 0.02) * exp(-dd * 3.0);
+        float gl = smoothstep(xl - 0.9, xl + 0.6, x) * smoothstep(xr + 0.9, xr - 0.6, x);
+        c += vec3(0.02, 0.20, 0.26) * gl * exp(-dd * 1.5) * (0.12 + 0.6 * uFill);
+        c += vec3(0.35, 0.55, 0.55) * 0.18 * smoothstep(0.02, 0.0, dd);
+    } else if (!outerX) {
+        c = bg(p);
+    } else if (!inX) {
+        float u = (x < 0.0) ? (x - (xl - GLASS)) / GLASS : ((xr + GLASS) - x) / GLASS;
+        c = glassCol(clamp(u, 0.0, 1.0), bg(p), p.y < hs);
+    } else if (p.y < yb) {
+        float u = (p.y - (yb - GLASS)) / GLASS;
+        c = glassCol(clamp(1.0 - u, 0.0, 1.0), bg(p), true);
+    } else {
+        float gTop = gTopAt(x);
+        float wfD = 1.0 - smoothstep(WAVE_NEAR, WAVE_FAR, max(d, 0.0));
+        vec2 off = (vec2(vn(p * 3.0 + uTime * 0.35), vn(p * 3.3 - uTime * 0.28)) - 0.5) * 0.03 * (0.4 + uEnergy) * wfD;
+        vec2 sp = (d > 0.0) ? p * 0.92 + off : p;
+        vec3 base = (p.y < gTop) ? gravel(p) : bg(sp);
+
+        float sl = (fieldAt(x + 0.03).x - fieldAt(x - 0.03).x) / 0.06;
+
+        if (d > 0.0) {
+            float dd = d;
+            float e = 0.07;
+            float x1 = x + dd * 0.28;
+            float x2 = x - dd * 0.18;
+            float cu1 = fieldAt(x1 + e).x + fieldAt(x1 - e).x - 2.0 * fieldAt(x1).x;
+            float cu2 = fieldAt(x2 + e).x + fieldAt(x2 - e).x - 2.0 * fieldAt(x2).x;
+            float I0 = clamp(1.0 - 0.45 * (cu1 + cu2) / (e * e), 0.15, 2.6);
+            float I = mix(1.0, I0, wfD);
+            float lightD = exp(-dd * 0.20);
+
+            if (p.y < gTop) {
+                vec2 q = p * 3.0;
+                float cn = sin(q.x * 2.1 + sin(q.y * 1.7 + uTime * 0.7) * 1.6 + uTime * 0.5)
+                         * sin(q.y * 2.3 + sin(q.x * 1.9 - uTime * 0.6) * 1.6 - uTime * 0.4);
+                cn = pow(max(cn, 0.0), 3.0);
+                base = base * (1.0 + CAUSTIC * 0.70 * (I - 1.0)) * (0.55 + 0.45 * lightD)
+                     + vec3(0.55, 0.95, 0.95) * cn * wfD * (0.18 + 0.35 * uEnergy) * lightD * smoothstep(0.0, 0.4, dd) * CAUSTIC;
+            }
+
+            vec3 T = exp(-vec3(0.60, 0.17, 0.09) * dd * 0.32);
+            vec3 scat = vec3(0.012, 0.20, 0.27) * lightD + vec3(0.0, 0.025, 0.06);
+            float fogA = 1.0 - exp(-dd * 0.30);
+            c = mix(base * T, scat, fogA * 0.6);
+
+            c += vec3(0.28, 0.62, 0.62) * max(I - 1.0, 0.0) * lightD * 0.22 * smoothstep(0.0, 0.35, dd) * CAUSTIC;
+
+            float coneW = 0.06 + dd * 0.14;
+            float cone = smoothstep(coneW, 0.0, abs(x)) * exp(-dd * 0.6) * uStream
+                       * (0.5 + 0.5 * fbm(vec2(x * 8.0, p.y * 5.0 + uTime * 2.5)));
+            c = mix(c, vec3(0.78, 0.94, 1.0) * 0.9, cone * 0.5);
+
+            float band = smoothstep(0.18, 0.0, dd);
+            float bl = clamp(dot(base, vec3(0.33)) * 2.0, 0.0, 1.0);
+            c = mix(c, vec3(0.50, 0.78, 0.82) * (0.5 + 0.5 * bl), band * 0.45);
+        } else {
+            c = base;
+        }
+
+        c += vec3(0.05) * smoothstep(0.35, 0.0, abs((x - xl) - 1.2 + p.y * 0.2));
+
+        float aa = uPx * 1.5;
+        float lineW = smoothstep(0.012 + aa, 0.0, abs(d));
+        c = mix(c, vec3(0.85, 1.0, 1.0), lineW * 0.55);
+        float gq = (sl - 0.18) * 7.0;
+        float glint = exp(-gq * gq) * smoothstep(0.06, 0.0, abs(d));
+        c += vec3(1.0, 0.96, 0.88) * glint * 1.2;
+        float lip = smoothstep(0.028, 0.0, -d) * step(0.0, -d);
+        c = mix(c, vec3(0.65, 0.88, 0.92), lip * 0.4);
+
+        float fo = fld.y;
+        if (fo > 0.02) {
+            float tf = 0.012 + 0.075 * fo;
+            float fz = (d + tf * 0.8) / (tf * 1.1);
+            if (fz > 0.0 && fz < 1.0) {
+                float n0 = fbm(vec2(x * 16.0, p.y * 16.0) + vec2(0.0, uTime * 0.05));
+                float lace = 1.0 - abs(2.0 * fbm(vec2(x * 34.0 + 3.7, p.y * 34.0 + 1.9)) - 1.0);
+                float body = 1.0 - abs(2.0 * fz - 1.0);
+                float fa = smoothstep(0.62 - 0.45 * fo, 0.92 - 0.45 * fo, n0 + 0.30 * body + 0.18 * lace);
+                fa *= smoothstep(0.02, 0.12, fo);
+                vec3 fcol = vec3(0.88, 0.96, 1.0) * (0.55 + 0.45 * body);
+                c = mix(c, fcol, fa * 0.92);
+            }
+        }
+
+        if (p.y > hs) {
+            float sx = 0.012 * sin(p.y * 3.0 + uTime * 4.0);
+            float yn = clamp((p.y - hs) / max(3.2 - hs, 0.1), 0.0, 1.0);
+            float w = mix(0.038, 0.060, yn) * (0.92 + 0.08 * sin(p.y * 20.0 + uTime * 20.0));
+            float ax = abs(x - sx);
+            float sa = smoothstep(w, w * 0.55, ax);
+            float stripe = 0.65 + 0.35 * sin(p.y * 38.0 - uTime * 34.0 + fbm(vec2(x * 20.0, p.y * 3.0)) * 6.0);
+            vec3 sc = vec3(0.82, 0.96, 1.0) * stripe * (0.75 + 0.25 * smoothstep(0.0, w * 0.8, w - ax));
+            c = mix(c, sc, sa * 0.78 * uStream);
+            vec2 ig = vec2(x - sx, p.y - hs);
+            float glow = exp(-(ig.x * ig.x / 0.05 + ig.y * ig.y / 0.012)) * uStream;
+            c += vec3(0.7, 0.9, 1.0) * glow * 0.5;
+        }
+
+        c *= 1.0 - 0.25 * exp(-max(wall, 0.0) / 0.12);
+    }
+
+    c = mix(c, c * vec3(1.6, 0.4, 0.4) + vec3(0.12, 0.0, 0.0), uFlash);
+    c *= uExposure;
+    c = (c * (2.51 * c + 0.03)) / (c * (2.43 * c + 0.59) + 0.14);
+    c = pow(clamp(c, 0.0, 1.0), vec3(1.0 / 2.2));
+    vec2 q2 = vUv - 0.5;
+    c *= 1.0 - dot(q2, q2) * 0.45;
+    c += (hash(gl_FragCoord.xy) - 0.5) / 255.0;
+    gl_FragColor = vec4(c, 1.0);
+}`;
+
+const POINT_VERT = `
+attribute float aSize;
+attribute float aType;
+attribute float aAlpha;
+uniform float uPxPerUnit;
+varying float vType;
+varying float vAlpha;
+void main() {
+    vType = aType;
+    vAlpha = aAlpha;
+    gl_PointSize = max(3.0, aSize * 2.0 * uPxPerUnit);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+
+const POINT_FRAG = `
+precision highp float;
+varying float vType;
+varying float vAlpha;
+void main() {
+    vec2 c = gl_PointCoord * 2.0 - 1.0;
+    float r = length(c);
+    if (r > 1.0) discard;
+    float edge = 1.0 - smoothstep(0.85, 1.0, r);
+    vec3 col;
+    float a;
+    if (vType < 0.5) {
+        float ring = smoothstep(0.55, 0.95, r);
+        float hl = smoothstep(0.45, 0.0, length(c - vec2(-0.38, 0.38)));
+        col = vec3(0.78, 0.95, 1.0);
+        a = (0.10 + ring * 0.55 + hl * 0.85) * edge;
+    } else {
+        col = mix(vec3(1.0), vec3(0.8, 0.95, 1.0), r * 0.6);
+        a = edge * 0.9;
+    }
+    gl_FragColor = vec4(col, a * vAlpha);
+}`;
+
+/* ================= シェーダー（金魚 v2） ================= */
+const FISH_VERT = `
+attribute float aFlex;
+attribute float aFlap;
+attribute float aFin;
+uniform float uTime;
+uniform float uPhase;
+uniform float uAmp;
+uniform float uBend;
+uniform float uSpeed;
+uniform float uSway;
+uniform float uPect;
+uniform float uRuf;
+uniform float uBreath;
+varying vec3 vN;
+varying vec3 vNL;
+varying vec3 vView;
+varying vec3 vWorld;
+varying vec3 vPosL;
+varying vec2 vUvF;
+varying float vFin;
+void main() {
+    vec3 p = position;
+    float s = clamp((0.5 - p.x) / 0.95, 0.0, 1.9);
+
+    // 体の進行波：頭はほぼ動かず、尾に向かって振幅が増え、位相は頭から尾へ直線的に遅れる
+    float amp = (0.028 + 0.085 * pow(s, 1.8)) * uAmp;
+    p.z += amp * sin(uPhase - s * 4.6);
+
+    // えら呼吸（頭部だけ小さく膨らむ）
+    float head = 1.0 - smoothstep(0.12, 0.34, s);
+    p.z *= 1.0 + head * 0.035 * sin(uTime * 2.8 + uBreath);
+
+    // C字ベンド（旋回）：円弧に沿って曲げる
+    p.z += uBend * s * s * 0.475;
+    p.x += uBend * uBend * s * s * s * 0.158;
+
+    // ヒレ：根元から先端へ遅れて伝わる波、先端ほど大きく波打つ縁、慣性でなびく
+    float tip = uv.x;
+    float t2 = tip * tip;
+    float fw = aFlex;
+    float whip = sin(uPhase - s * 4.6 - tip * 1.8);
+    p.z += fw * t2 * (0.03 + 0.09 * uAmp) * whip;
+    float rf = sin(position.y * 20.0 + position.x * 7.0 + uPhase * 1.5 - tip * 6.0);
+    p.z += fw * tip * uRuf * rf;
+    p.y += fw * t2 * uRuf * 0.6 * cos(position.x * 9.0 + uPhase * 1.1 - tip * 4.0);
+    p.z += fw * t2 * uSway * 0.12;
+    p.x -= fw * t2 * uSpeed * 0.07;
+    p.y -= step(0.5, aFin) * (1.0 - step(1.5, aFin)) * t2 * uSpeed * 0.05;
+
+    // 胸ビレ・腹ビレ：漕ぐ動き（止まっているときも小さく動く）、速いときは畳む
+    float side = sign(position.z);
+    float row = 0.5 + 0.5 * sin(uPhase * 0.6 + (side > 0.0 ? 0.0 : 1.2));
+    p.z += side * aFlap * uPect * 0.12 * row;
+    p.y += aFlap * 0.035 * sin(uPhase * 0.6 + 1.0);
+    p.x -= aFlap * uSpeed * 0.06;
+    p.z += aFlap * 0.02 * sin(uPhase * 1.7 - tip * 5.0);
+
+    vUvF = uv;
+    vPosL = position;
+    vNL = normal;
+    vFin = aFin;
+    vec4 wp = modelMatrix * vec4(p, 1.0);
+    vWorld = wp.xyz;
+    vec4 mv = modelViewMatrix * vec4(p, 1.0);
+    vView = -mv.xyz;
+    vN = normalize(normalMatrix * normal);
+    gl_Position = projectionMatrix * mv;
+}`;
+
+const FISH_FRAG = `
+precision highp float;
+uniform float uPart;
+uniform vec3 uTint;
+uniform vec3 uTint2;
+uniform float uPattern;
+uniform float uSeed;
+uniform float uSheen;
+uniform float uTime;
+uniform float uLevel;
+uniform float uEnergy;
+uniform vec4 uBox;
+uniform sampler2D uField;
+varying vec3 vN;
+varying vec3 vNL;
+varying vec3 vView;
+varying vec3 vWorld;
+varying vec3 vPosL;
+varying vec2 vUvF;
+varying float vFin;
+
+const float NF = 256.0;
+const float CAUSTIC = ${CAUSTIC_STRENGTH.toFixed(3)};
+const float WAVE_NEAR = 0.5;
+const float WAVE_FAR = 1.5;
+
+float hash(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+}
+float vn(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+float fbm(vec2 p) {
+    float s = 0.0;
+    float a = 0.5;
+    for (int i = 0; i < 4; i++) {
+        s += a * vn(p);
+        p = p * 2.03 + vec2(7.1, 3.7);
+        a *= 0.5;
+    }
+    return s;
+}
+float surfAt(float x) {
+    float u = clamp((x - uBox.x) / (uBox.y - uBox.x), 0.0, 1.0) * (NF - 1.0);
+    float i0 = floor(u);
+    float f = u - i0;
+    float i1 = min(i0 + 1.0, NF - 1.0);
+    float a = texture2D(uField, vec2((i0 + 0.5) / NF, 0.5)).r;
+    float b = texture2D(uField, vec2((i1 + 0.5) / NF, 0.5)).r;
+    return mix(a, b, f);
+}
+
+void main() {
+    float hs = uLevel + surfAt(vWorld.x);
+    float d = hs - vWorld.y;
+    if (d < 0.0) discard;
+
+    vec3 N = normalize(vN);
+    if (uPart > 0.5 && uPart < 1.5 && !gl_FrontFacing) N = -N;
+    vec3 V = normalize(vView);
+    vec3 L = normalize(vec3(0.25, 0.9, 0.55));
+    vec3 H = normalize(L + V);
+    float ndl = dot(N, L);
+    float ndv = max(dot(N, V), 0.0);
+    vec3 col = vec3(0.0);
+    float alpha = 1.0;
+
+    if (uPart < 0.5) {
+        float u = vUvF.x;
+        float v = vUvF.y;
+        float belly = 1.0 - smoothstep(-0.75, 0.15, vNL.y);
+        vec3 top = uTint * vec3(1.0, 0.86, 0.72);
+        vec3 bel = mix(uTint, vec3(1.0, 0.86, 0.62), 0.6);
+        vec3 base = mix(top, bel, belly);
+        float pn = fbm(vPosL.xy * 3.0 + vPosL.z * 2.2 + uSeed);
+        if (uPattern > 3.5) {
+            base = mix(vec3(0.96, 0.93, 0.86), vec3(1.0, 0.90, 0.76), belly);
+        } else if (uPattern > 2.5) {
+            float dk = smoothstep(0.52, 0.62, pn);
+            base = mix(base, vec3(0.03, 0.025, 0.03), dk);
+        } else if (uPattern > 1.5) {
+            vec3 wb = mix(uTint2, vec3(1.0, 0.93, 0.82), belly * 0.5);
+            float pm = smoothstep(0.50, 0.60, pn);
+            base = mix(wb, uTint * vec3(1.0, 0.9, 0.8), pm * (1.0 - belly * 0.6));
+        } else if (uPattern > 0.5) {
+            float pm = smoothstep(0.48, 0.58, pn);
+            base = mix(base, uTint2, pm);
+            float dk = smoothstep(0.64, 0.70, fbm(vPosL.xy * 5.5 + vPosL.z * 3.0 + uSeed * 1.7));
+            base = mix(base, vec3(0.03, 0.025, 0.03), dk * 0.9 * (1.0 - belly));
+        }
+
+        // 大きめのうろこ（密度を下げ、光沢を強調）
+        vec2 g = vec2(u * 20.0, v * 10.0);
+        float rowi = floor(g.y);
+        g.x += 0.5 * mod(rowi, 2.0);
+        vec2 f = fract(g);
+        vec2 cid = floor(g);
+        float sd = length((f - vec2(0.5, 0.0)) * vec2(1.0, 1.5));
+        float rim = smoothstep(0.52, 0.80, sd);
+        float cellH = hash(cid);
+        base *= 1.0 - 0.20 * rim;
+        base *= 0.94 + 0.12 * cellH;
+
+        // 側線（点線）：側面の中央を、えらの後ろから尾の付け根まで
+        float lv = abs(fract(v * 2.0) - 0.5);
+        float band = 1.0 - smoothstep(0.0, 0.035, lv);
+        float along = smoothstep(0.26, 0.30, u) * (1.0 - smoothstep(0.90, 0.97, u));
+        float dots = step(0.35, 0.5 + 0.5 * sin(u * 150.0));
+        float ll = band * along * dots;
+        base *= 1.0 - 0.28 * ll;
+
+        // えら蓋：縁の線と、その前の影
+        float gu = 0.235 + 0.035 * abs(sin(v * 6.2832));
+        float gl = 1.0 - smoothstep(0.0, 0.010, abs(u - gu));
+        float gsh = smoothstep(gu - 0.035, gu, u) * (1.0 - smoothstep(gu, gu + 0.004, u));
+        base *= 1.0 - 0.26 * gl;
+        base *= 1.0 - 0.10 * gsh;
+
+        float wrap = 0.38 + 0.62 * clamp(ndl * 0.5 + 0.5, 0.0, 1.0);
+        float sss = pow(clamp(1.0 - abs(ndl), 0.0, 1.0), 2.0) * 0.18;
+        float spec = pow(max(dot(N, H), 0.0), 48.0) * (0.3 + 0.7 * (1.0 - rim)) * (0.6 + 0.8 * cellH);
+        float fres = pow(1.0 - ndv, 3.0);
+        vec3 iri = 0.5 + 0.5 * cos(6.2832 * (vec3(0.0, 0.33, 0.67) + ndv * 1.3 + cellH * 0.3));
+        col = base * wrap + base * vec3(1.0, 0.35, 0.15) * sss
+            + vec3(1.0, 0.96, 0.88) * spec * 0.9
+            + mix(vec3(1.0, 0.75, 0.45), iri, 0.5) * fres * 0.22 * uSheen;
+    } else if (uPart < 1.5) {
+        // 半透明のヒレ：濃い筋（鰭条）と薄い膜、先端ほど透明、逆光で縁が赤く透ける
+        float rd = vUvF.x;
+        float ac = vUvF.y;
+        float nR = vFin < 0.5 ? 26.0 : (vFin < 1.5 ? 18.0 : (vFin < 2.5 ? 14.0 : 11.0));
+        float ray = pow(0.5 + 0.5 * cos(ac * nR * 6.2832), 3.0);
+        vec3 lightC = vec3(1.0, 0.82, 0.58);
+        vec3 fcBase = (uPattern > 1.5 && uPattern < 2.5) ? mix(uTint2, uTint, 0.25) : mix(uTint, lightC, 0.35);
+        vec3 fc = mix(fcBase, fcBase * vec3(1.0, 0.78, 0.65), ray);
+        float lit = 0.6 + 0.4 * abs(ndl);
+        float trans = pow(clamp(dot(L, -V) * 0.5 + 0.5, 0.0, 1.0), 3.0);
+        col = fc * lit + vec3(1.0, 0.38, 0.12) * trans * 0.35 * (0.4 + 0.6 * (1.0 - rd));
+        col += vec3(1.0, 0.9, 0.7) * pow(1.0 - abs(dot(N, V)), 2.0) * 0.22;
+        float mem = 0.20 + 0.16 * (1.0 - rd);
+        alpha = (mem + 0.45 * ray * (1.0 - 0.45 * rd)) * (1.0 - smoothstep(0.80, 1.0, rd));
+        alpha *= 0.75 + 0.25 * smoothstep(0.2, 0.8, vn(vec2(ac * 40.0, rd * 6.0) + uSeed));
+        alpha = clamp(alpha, 0.0, 0.85);
+    } else {
+        // 目：金色の虹彩、黒い瞳孔、角膜のハイライト
+        float th = acos(clamp(abs(vNL.z), 0.0, 1.0));
+        vec3 gold = vec3(0.95, 0.62, 0.10);
+        float pupil = 1.0 - smoothstep(0.30, 0.42, th);
+        float iris = 1.0 - smoothstep(0.80, 0.95, th);
+        float fib = fbm(vec2(th * 9.0, atan(vNL.y, vNL.x) * 2.0));
+        col = mix(vec3(0.08, 0.05, 0.03), gold * (0.7 + 0.5 * fib), iris);
+        col = mix(col, vec3(0.005), pupil);
+        col += vec3(1.0) * pow(max(dot(N, H), 0.0), 120.0) * 1.5;
+    }
+
+    // 水面近くだけ、波の光の模様が体に落ちる
+    float wf = 1.0 - smoothstep(WAVE_NEAR, WAVE_FAR, d);
+    vec2 q = vWorld.xy * 3.0;
+    float cn = sin(q.x * 2.1 + sin(q.y * 1.7 + uTime * 0.7) * 1.6 + uTime * 0.5)
+             * sin(q.y * 2.3 + sin(q.x * 1.9 - uTime * 0.6) * 1.6 - uTime * 0.4);
+    cn = pow(max(cn, 0.0), 3.0);
+    col *= 1.0 + 0.45 * CAUSTIC * cn * wf * (0.4 + uEnergy);
+
+    // 水の吸収と散乱
+    vec3 T = exp(-vec3(0.60, 0.17, 0.09) * d * 0.32);
+    vec3 scat = vec3(0.012, 0.20, 0.27) * exp(-d * 0.20) + vec3(0.0, 0.025, 0.06);
+    float fogA = 1.0 - exp(-d * 0.30);
+    col = mix(col * T, scat, fogA * 0.35);
+
+    col = (col * (2.51 * col + 0.03)) / (col * (2.43 * col + 0.59) + 0.14);
+    col = pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2));
+    gl_FragColor = vec4(col, alpha);
+}`;
+
+/* ================= 金魚のジオメトリ（品種パラメータ付き） ================= */
+function bodyProfile(t, P) {
+    const e = Math.pow(Math.max(Math.sin(Math.PI * Math.pow(t, 0.62)), 0), 0.8);
+    return { x: 0.5 - t * 0.95, hy: P.bodyH * 0.27 * e + 0.025 * t, hz: P.bodyW * 0.17 * e + 0.018 * t, cy: 0.02 * e * (1 - t), e: e };
+}
+function bodyPoint(t, th, P) {
+    const p = bodyProfile(t, P);
+    const c = Math.cos(th), s = Math.sin(th);
+    const hyS = c > 0 ? p.hy : p.hy * 0.88;
+    return [p.x, p.cy + hyS * c, p.hz * s];
+}
+function cross3(a, b) {
+    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+function addZeroAttrs(g, n) {
+    g.setAttribute('aFlex', new THREE.Float32BufferAttribute(new Float32Array(n), 1));
+    g.setAttribute('aFlap', new THREE.Float32BufferAttribute(new Float32Array(n), 1));
+    g.setAttribute('aFin', new THREE.Float32BufferAttribute(new Float32Array(n), 1));
+}
+function buildBodyGeo(P) {
+    const S = 48, R = 28;
+    const pos = [], nor = [], uvs = [], idx = [];
+    for (let i = 0; i <= S; i++) {
+        const t = i / S;
+        for (let j = 0; j <= R; j++) {
+            const th = (j / R) * Math.PI * 2;
+            const Pt = bodyPoint(t, th, P);
+            const tt = clamp(t, 0.004, 0.996);
+            const a = bodyPoint(tt + 0.004, th, P), b = bodyPoint(tt - 0.004, th, P);
+            const c2 = bodyPoint(tt, th + 0.01, P), d2 = bodyPoint(tt, th - 0.01, P);
+            const dT = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+            const dH = [c2[0] - d2[0], c2[1] - d2[1], c2[2] - d2[2]];
+            let n = cross3(dT, dH);
+            const len = Math.hypot(n[0], n[1], n[2]) || 1;
+            n = [n[0] / len, n[1] / len, n[2] / len];
+            const cy = bodyProfile(t, P).cy;
+            if (n[1] * (Pt[1] - cy) + n[2] * Pt[2] < 0) n = [-n[0], -n[1], -n[2]];
+            pos.push(Pt[0], Pt[1], Pt[2]);
+            nor.push(n[0], n[1], n[2]);
+            uvs.push(t, j / R);
+        }
+    }
+    for (let i = 0; i < S; i++) {
+        for (let j = 0; j < R; j++) {
+            const a0 = i * (R + 1) + j;
+            idx.push(a0, a0 + 1, a0 + R + 1, a0 + 1, a0 + R + 2, a0 + R + 1);
+        }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    addZeroAttrs(g, pos.length / 3);
+    g.setIndex(idx);
+    return g;
+}
+// uv.x = 根元からの距離(0..1)、uv.y = ヒレを横切る座標(0..1)。鰭条は uv.y 方向に並ぶ
+function buildFinGeo(P) {
+    const pos = [], uvs = [], flex = [], flap = [], fin = [], idx = [];
+    function grid(nu, nv, fn, fx, isFlap, id) {
+        const base = pos.length / 3;
+        for (let i = 0; i <= nu; i++) {
+            for (let j = 0; j <= nv; j++) {
+                const rd = i / nu, ac = j / nv;
+                const Pt = fn(rd, ac);
+                pos.push(Pt[0], Pt[1], Pt[2]);
+                uvs.push(rd, ac);
+                flex.push(fx);
+                flap.push(isFlap ? rd : 0);
+                fin.push(id);
+            }
+        }
+        for (let i = 0; i < nu; i++) {
+            for (let j = 0; j < nv; j++) {
+                const a0 = base + i * (nv + 1) + j;
+                idx.push(a0, a0 + 1, a0 + nv + 1, a0 + 1, a0 + nv + 2, a0 + nv + 1);
+            }
+        }
+    }
+    const tail = (s) => (rd, ac) => {
+        const bb = ac * 2 - 1;
+        const spread = 0.03 + P.tailSpread * Math.pow(rd, 0.85);
+        const lenAt = P.tailLen * (1 - P.fork * (1 - Math.pow(Math.abs(bb), 1.2)));
+        return [-0.44 - rd * lenAt, bb * spread,
+                s * (0.012 + P.split * rd * rd) + P.ruf * 0.6 * rd * Math.sin(bb * 5.5 + rd * 3.0)];
+    };
+    if (P.lobes === 2) {
+        grid(16, 22, tail(1), 1.0, false, 0);
+        grid(16, 22, tail(-1), 1.0, false, 0);
+    } else {
+        grid(16, 22, tail(0), 1.0, false, 0);
+    }
+    grid(8, 14, (rd, ac) => {
+        const x0 = P.dorsalX - ac * P.dorsalLen;
+        const bp = bodyProfile(clamp((0.5 - x0) / 0.95, 0, 1), P);
+        const top = bp.cy + bp.hy;
+        const h = P.dorsalH * Math.pow(1 - ac, 0.5) * (0.35 + 0.65 * Math.sin(Math.min(1, ac * 5) * Math.PI / 2));
+        return [x0 - rd * 0.10 * (0.5 + ac), top - 0.03 + rd * h, 0.03 * Math.sin(ac * 8 + rd * 3) * rd];
+    }, 0.55, false, 1);
+    grid(6, 12, (rd, ac) => {
+        const x0 = -0.12 - ac * 0.28;
+        const bp = bodyProfile(clamp((0.5 - x0) / 0.95, 0, 1), P);
+        const bot = bp.cy - bp.hy * 0.88;
+        const h = P.analH * Math.pow(1 - ac, 0.5) * (0.4 + 0.6 * Math.sin(Math.min(1, ac * 5) * Math.PI / 2));
+        return [x0 - rd * 0.08, bot + 0.03 - rd * h, 0.02 * Math.sin(ac * 7 + rd * 3) * rd];
+    }, 0.65, false, 2);
+    const bpP = bodyProfile(clamp((0.5 - 0.17) / 0.95, 0, 1), P);
+    [1, -1].forEach((s) => {
+        grid(8, 8, (rd, ac) => {
+            const w = 0.17 * P.pect * Math.sin(Math.PI * Math.pow(Math.max(rd, 0.0001), 0.6));
+            return [0.17 - rd * 0.30 * P.pect, -0.08 - rd * 0.12 * P.pect + (ac - 0.5) * w * 0.6,
+                    s * (bpP.hz * 0.92 + rd * 0.08)];
+        }, 0.3, true, 3);
+    });
+    const bpV = bodyProfile(clamp((0.5 - 0.02) / 0.95, 0, 1), P);
+    [1, -1].forEach((s) => {
+        grid(6, 6, (rd, ac) => {
+            const w = 0.10 * Math.sin(Math.PI * Math.pow(Math.max(rd, 0.0001), 0.6));
+            return [0.02 - rd * 0.16, bpV.cy - bpV.hy * 0.85 - rd * 0.10 + (ac - 0.5) * w * 0.5,
+                    s * (bpV.hz * 0.40 + rd * 0.05)];
+        }, 0.3, true, 4);
+    });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    g.setAttribute('aFlex', new THREE.Float32BufferAttribute(flex, 1));
+    g.setAttribute('aFlap', new THREE.Float32BufferAttribute(flap, 1));
+    g.setAttribute('aFin', new THREE.Float32BufferAttribute(fin, 1));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    return g;
+}
+function buildEyeGeo(P, side) {
+    const g = new THREE.SphereGeometry(P.eyeR, 14, 12);
+    const bp = bodyProfile(0.14, P);
+    g.translate(bp.x, bp.cy + bp.hy * 0.28, bp.hz * 0.93 * 0.96 * side);
+    addZeroAttrs(g, g.attributes.position.count);
+    return g;
+}
+
+/* ================= 品種・色のランダム生成 ================= */
+function randomBreed() {
+    const type = Math.floor(Math.random() * 5);
+    const P = {
+        bodyH: 1, bodyW: 1, tailLen: rand(0.38, 1.33), tailSpread: 0.3, fork: 0.2, lobes: 2, split: 0.08,
+        ruf: 0.03, dorsalH: 0.26, dorsalX: 0.20, dorsalLen: rand(0.40, 0.52), analH: rand(0.14, 0.22),
+        pect: rand(0.85, 1.25), eyeR: rand(0.048, 0.060)
+    };
+    const lenK = 0.8 + 0.3 * P.tailLen;
+    if (type === 0) {          // コメット系：細長く、二股の長い尾
+        P.bodyH = rand(0.80, 0.92); P.bodyW = rand(0.85, 1.0);
+        P.tailSpread = rand(0.14, 0.24) * lenK; P.fork = rand(0.30, 0.50); P.lobes = 1; P.split = 0;
+        P.ruf = rand(0.008, 0.02); P.dorsalH = rand(0.18, 0.24);
+    } else if (type === 1) {   // 和金系：やや丸く、二重の尾
+        P.bodyH = rand(0.95, 1.08); P.bodyW = rand(0.95, 1.1);
+        P.tailSpread = rand(0.28, 0.40) * lenK; P.fork = rand(0.0, 0.25); P.lobes = 2; P.split = rand(0.06, 0.11);
+        P.ruf = rand(0.02, 0.04); P.dorsalH = rand(0.24, 0.32);
+    } else if (type === 2) {   // 琉金系（こぶ無し）：丸い体、広い二重の尾
+        P.bodyH = rand(1.08, 1.25); P.bodyW = rand(1.05, 1.2);
+        P.tailSpread = rand(0.34, 0.50) * lenK; P.fork = rand(0.05, 0.30); P.lobes = 2; P.split = rand(0.08, 0.12);
+        P.ruf = rand(0.03, 0.05); P.dorsalH = rand(0.28, 0.40);
+    } else if (type === 3) {   // ベールテール系：ひらひら長い尾
+        P.bodyH = rand(1.0, 1.15); P.bodyW = rand(1.0, 1.15);
+        P.tailSpread = rand(0.40, 0.55) * lenK; P.fork = rand(0.0, 0.15); P.lobes = Math.random() < 0.6 ? 2 : 1; P.split = rand(0.06, 0.10);
+        P.ruf = rand(0.05, 0.08); P.dorsalH = rand(0.28, 0.38);
+    } else {                   // 朱文金系：普通体型、二股の尾
+        P.bodyH = rand(0.85, 0.98); P.bodyW = rand(0.9, 1.05);
+        P.tailSpread = rand(0.18, 0.30) * lenK; P.fork = rand(0.25, 0.45); P.lobes = 1; P.split = 0;
+        P.ruf = rand(0.015, 0.03); P.dorsalH = rand(0.22, 0.30);
+    }
+    P.tailSpread = clamp(P.tailSpread, 0.12, 0.55);
+    return P;
+}
+function randomColors() {
+    const k = Math.random();
+    let tint, pattern = 0;
+    const tint2 = [1.0, 0.95, 0.88];
+    if (k < 0.26) { tint = [1.0, rand(0.18, 0.42), 0.05]; }
+    else if (k < 0.40) { tint = [1.0, rand(0.58, 0.74), 0.12]; }
+    else if (k < 0.55) { tint = [0.95, 0.16, 0.04]; pattern = 2; }
+    else if (k < 0.72) { tint = [1.0, rand(0.28, 0.45), 0.05]; pattern = 1; }
+    else if (k < 0.84) { tint = [1.0, rand(0.30, 0.50), 0.06]; pattern = 4; }
+    else { tint = [1.0, rand(0.30, 0.46), 0.06]; pattern = 3; }
+    return { tint: tint, tint2: tint2, pattern: pattern };
+}
+
+/* ================= 金魚の群れ ================= */
+const FISH_MAX = 6;
+const FISH_THRESH = [0.22, 0.38, 0.52, 0.66, 0.80, 0.90];
+// true にすると、ヒレの半透明を「サンプル抜き」で描く（MSAA が効く環境向け。順序に依存しない）
+const FIN_A2C = false;
+const fishList = [];
+
+function angDiff(a, b) {
+    return ((a - b + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+}
+
+function addFish() {
+    const P = randomBreed();
+    const C = randomColors();
+    const total = 0.94 + P.tailLen;
+    const size = Math.min(rand(0.55, 0.85), 1.7 / total);
+    const R = size * Math.max(0.6, 0.44 + P.tailLen) + 0.05;
+    const Ry = size * Math.max(0.27 * P.bodyH + 0.04, P.tailSpread + 0.03) + 0.05;
+
+    const fu = {
+        uPhase: { value: Math.random() * 6.28 },
+        uAmp: { value: 1 },
+        uBend: { value: 0 },
+        uSpeed: { value: 0 },
+        uSway: { value: 0 },
+        uPect: { value: 1 },
+        uRuf: { value: P.ruf },
+        uBreath: { value: Math.random() * 6.28 },
+        uTint: { value: new THREE.Vector3(C.tint[0], C.tint[1], C.tint[2]) },
+        uTint2: { value: new THREE.Vector3(C.tint2[0], C.tint2[1], C.tint2[2]) },
+        uPattern: { value: C.pattern },
+        uSeed: { value: Math.random() * 50 },
+        uSheen: { value: rand(0.6, 1.0) }
+    };
+    const shared = {
+        uTime: quadMat.uniforms.uTime,
+        uLevel: quadMat.uniforms.uLevel,
+        uEnergy: quadMat.uniforms.uEnergy,
+        uBox: quadMat.uniforms.uBox,
+        uField: quadMat.uniforms.uField
+    };
+    const mk = (part, translucent) => new THREE.ShaderMaterial({
+        uniforms: Object.assign({ uPart: { value: part } }, fu, shared),
+        vertexShader: FISH_VERT,
+        fragmentShader: FISH_FRAG,
+        side: THREE.DoubleSide,
+        transparent: translucent && !FIN_A2C,
+        depthWrite: !(translucent && !FIN_A2C),
+        alphaToCoverage: translucent && FIN_A2C
+    });
+    const group = new THREE.Group();
+    const body = new THREE.Mesh(buildBodyGeo(P), mk(0, false));
+    const fins = new THREE.Mesh(buildFinGeo(P), mk(1, true));
+    const eyeMat = mk(2, false);
+    const eL = new THREE.Mesh(buildEyeGeo(P, 1), eyeMat);
+    const eR = new THREE.Mesh(buildEyeGeo(P, -1), eyeMat);
+    [body, fins, eL, eR].forEach(m => { m.frustumCulled = false; group.add(m); });
+    fins.renderOrder = 2;
+    sceneFish.add(group);
+
+    const bx0 = TANK.xl + R + 0.15, bx1 = TANK.xr - R - 0.15;
+    const floorTop = TANK.yb + GRAVEL + 0.06;
+    const by0 = floorTop + Ry, by1 = Math.max(level - Ry - 0.2, by0 + 0.2);
+    const f = {
+        group: group, fu: fu, P: P, size: size, R: R, Ry: Ry,
+        pos: new THREE.Vector3(rand(bx0, bx1), rand(by0, by1), rand(-0.9, 0.55)),
+        vel: new THREE.Vector3((Math.random() - 0.5) * 0.3, 0, 0),
+        target: new THREE.Vector3(), wt: 0,
+        yaw: Math.random() < 0.5 ? 0 : Math.PI, pitch: 0, roll: 0, yawVel: 0,
+        phase: Math.random() * 6.28, rate: 6, amp: 0.6, bend: 0, sway: 0, pect: 1,
+        cruise: rand(0.28, 0.46),
+        excite: 0, nextExcite: rand(6, 16),
+        mode: 'cruise', modeT: 0, modeDur: 0, turnDir: 1, impulsed: false, turnCool: 0, nextBurst: rand(3, 8),
+        scale: 0.01, leaving: false
+    };
+    if (Math.abs(f.pos.x) < 0.8) f.pos.x += (f.pos.x >= 0 ? 1 : -1) * 0.9;
+    f.pos.x = clamp(f.pos.x, bx0, bx1);
+    fishList.push(f);
+    burstBubbles(f.pos.x, f.pos.y, 14);
+}
+
+const _desired = new THREE.Vector3();
+const _delta = new THREE.Vector3();
+const _head = new THREE.Vector3();
+const _prevV = new THREE.Vector3();
+const _tmp = new THREE.Vector3();
+function headingOf(f, out) {
+    const cp = Math.cos(f.pitch);
+    return out.set(cp * Math.cos(f.yaw), Math.sin(f.pitch), -cp * Math.sin(f.yaw));
+}
+function startMode(f, mode, dur) {
+    f.mode = mode; f.modeT = 0; f.modeDur = dur; f.impulsed = false;
+}
+
+function updateFish(dt, flowing) {
+    const active = fishList.filter(f => !f.leaving);
+    const target = FISH_THRESH.filter(t => fillFrac >= t).length;
+    const floorTop = TANK.yb + GRAVEL + 0.06;
+    if (active.length < target && fishList.length < FISH_MAX && (level - floorTop) > 1.0) {
+        addFish();
+    } else if (active.length > 0 && fillFrac < FISH_THRESH[active.length - 1] - 0.04) {
+        active[active.length - 1].leaving = true;
+    }
+
+    const push = (v, lo, hi, k) => (v < lo ? (lo - v) * k : (v > hi ? -(v - hi) * k : 0));
+
+    for (let n = fishList.length - 1; n >= 0; n--) {
+        const f = fishList[n];
+        const bx0 = TANK.xl + f.R + 0.15, bx1 = TANK.xr - f.R - 0.15;
+        const by0 = floorTop + f.Ry, by1 = Math.max(level - f.Ry - 0.2, by0 + 0.2);
+        const bz0 = -0.9, bz1 = 0.55;
+
+        f.wt -= dt;
+        if (f.wt <= 0) {
+            f.wt = rand(3, 8);
+            f.target.set(rand(bx0, bx1), rand(by0, by1), rand(bz0, bz1));
+        }
+        _delta.copy(f.target).sub(f.pos);
+        const dist = _delta.length();
+        const speedC = f.cruise * (1 + f.excite * 2.4);
+        _desired.copy(_delta).normalize().multiplyScalar(speedC * Math.min(1, dist / 0.8));
+        _desired.y *= 0.6;
+        _desired.z *= 0.45;
+
+        for (let m = 0; m < fishList.length; m++) {
+            const o = fishList[m];
+            if (o === f || o.leaving || o.scale < 0.3) continue;
+            _delta.copy(o.pos).sub(f.pos);
+            const dd = _delta.length() + 1e-4;
+            const personal = (f.R + o.R) * 0.5 + 0.15;
+            if (dd < personal) {
+                _desired.addScaledVector(_delta, -(personal - dd) / dd * 1.6);
+                f.excite = Math.max(f.excite, 0.15 * (1 - dd / personal));
+            } else if (dd < 3.6) {
+                _desired.addScaledVector(_delta, (dd > 2.0 ? 0.10 : 0.03) / dd);
+                _desired.addScaledVector(o.vel, 0.12);
+            }
+            if (o.excite > 0.45 && dd < 3.4) {
+                f.excite += (o.excite * 0.9 - f.excite) * Math.min(1, dt * 1.4);
+                _desired.addScaledVector(_delta, 0.6 / dd * o.excite);
+            }
+        }
+
+        f.nextExcite -= dt;
+        if (f.nextExcite <= 0) {
+            f.nextExcite = rand(9, 22) / (1 + 0.2 * fishList.length);
+            f.excite = 1;
+            f.wt = rand(1.5, 3);
+            f.target.set(rand(bx0, bx1), rand(by0, by1), rand(bz0, bz1));
+        }
+        f.excite *= Math.exp(-dt * 0.5);
+
+        _desired.x += push(f.pos.x, bx0 + 0.3, bx1 - 0.3, 1.5);
+        _desired.y += push(f.pos.y, by0 + 0.1, by1 - 0.05, 1.5);
+        _desired.z += push(f.pos.z, bz0 + 0.2, bz1 - 0.2, 1.5);
+        if (streamAmt > 0.1 && f.pos.y > level - 1.8 && Math.abs(f.pos.x) < 0.55 + f.R * 0.5) {
+            _desired.x += (f.pos.x >= 0 ? 1 : -1) * 1.2 * streamAmt;
+        }
+
+        // ---- 泳ぎの様式：連続遊泳 / バースト＆グライド / C字ターン ----
+        _prevV.copy(f.vel);
+        f.modeT += dt;
+        f.turnCool -= dt;
+        headingOf(f, _head);
+        const sp0 = f.vel.length();
+        let resp = 1.0 + f.excite * 2.2;
+
+        if (f.mode === 'cruise') {
+            f.nextBurst -= dt * (1 + 2 * f.excite);
+            const yawD = Math.atan2(-_desired.z, _desired.x);
+            const turnAng = angDiff(yawD, f.yaw);
+            if (f.nextBurst <= 0 && sp0 > 0.1) {
+                startMode(f, 'burst', 0.7);
+                f.vel.addScaledVector(_head, 0.4 + 0.5 * f.excite);
+                f.nextBurst = rand(4, 10);
+            } else if (Math.abs(turnAng) > 1.9 && sp0 > 0.12 && f.turnCool <= 0 && _desired.length() > 0.1) {
+                startMode(f, 'turn', 0.36);
+                f.turnDir = turnAng >= 0 ? 1 : -1;
+            }
+        } else if (f.mode === 'burst') {
+            resp *= 0.15;
+            if (f.modeT >= f.modeDur) startMode(f, 'coast', rand(0.9, 1.7));
+        } else if (f.mode === 'coast') {
+            resp *= 0.12;
+            f.vel.multiplyScalar(Math.exp(-dt * 0.9));
+            if (f.modeT >= f.modeDur) startMode(f, 'cruise', 0);
+        } else if (f.mode === 'turn') {
+            resp *= 0.2;
+            const pr = f.modeT / f.modeDur;
+            _tmp.copy(_head).multiplyScalar(Math.max(sp0, 0.25));
+            f.vel.lerp(_tmp, 1 - Math.exp(-dt * 6));
+            if (!f.impulsed && pr >= 0.55) {
+                f.impulsed = true;
+                headingOf(f, _head);
+                f.vel.addScaledVector(_head, 0.45 + 0.4 * f.excite);
+            }
+            if (f.modeT >= f.modeDur) { startMode(f, 'cruise', 0); f.turnCool = 1.5; }
+        }
+
+        f.vel.lerp(_desired, 1 - Math.exp(-dt * resp));
+        const maxSp = 0.6 + 1.9 * f.excite + (f.mode === 'burst' ? 0.8 : 0);
+        const sp = f.vel.length();
+        if (sp > maxSp) f.vel.multiplyScalar(maxSp / sp);
+        f.pos.addScaledVector(f.vel, dt);
+        f.pos.x = clamp(f.pos.x, TANK.xl + f.R * 0.6, TANK.xr - f.R * 0.6);
+        f.pos.y = clamp(f.pos.y, by0 - 0.1, Math.max(by1, by0 + 0.2));
+        f.pos.z = clamp(f.pos.z, bz0, bz1);
+
+        const sp2 = f.vel.length();
+        if (sp2 > 0.06) {
+            const yawT = Math.atan2(-f.vel.z, f.vel.x);
+            const pitchT = clamp(Math.atan2(f.vel.y, Math.hypot(f.vel.x, f.vel.z)), -0.5, 0.5);
+            const dy = angDiff(yawT, f.yaw);
+            const k = 1 - Math.exp(-dt * (f.mode === 'turn' ? 9 : (2.0 + f.excite * 3)));
+            f.yawVel = dy * k / Math.max(dt, 1e-4);
+            f.yaw += dy * k;
+            f.pitch += (pitchT - f.pitch) * k;
+        }
+        f.roll += (clamp(-f.yawVel * 0.18, -0.4, 0.4) - f.roll) * (1 - Math.exp(-dt * 3));
+
+        // ---- アニメーション用の値 ----
+        let ampT, rateT, bendT, pectT;
+        if (f.mode === 'burst') {
+            ampT = 1.3; rateT = Math.PI * 2 * 4.2; pectT = 0.25;
+            bendT = -clamp(f.yawVel * 0.2, -0.6, 0.6);
+        } else if (f.mode === 'coast') {
+            ampT = 0.14; rateT = Math.PI * 2 * 0.25; pectT = 0.5;
+            bendT = 0;
+        } else if (f.mode === 'turn') {
+            const pr = clamp(f.modeT / f.modeDur, 0, 1);
+            const prof = pr < 0.55 ? smooth01(pr / 0.55) : 1 - smooth01((pr - 0.55) / 0.45);
+            ampT = 0.9; rateT = Math.PI * 2 * 2.5; pectT = 0.4;
+            bendT = -f.turnDir * 1.5 * prof;
+        } else {
+            ampT = 0.55 + 0.5 * Math.min(1, sp2) + 0.45 * f.excite;
+            rateT = Math.PI * 2 * (0.7 + 1.6 * sp2 + 1.2 * f.excite);
+            pectT = 1.0;
+            bendT = -clamp(f.yawVel * 0.35, -1, 1);
+        }
+        f.amp += (ampT - f.amp) * (1 - Math.exp(-dt * 10));
+        f.rate += (rateT - f.rate) * (1 - Math.exp(-dt * 8));
+        f.bend += (bendT - f.bend) * (1 - Math.exp(-dt * (f.mode === 'turn' ? 14 : 8)));
+        f.pect += (pectT - f.pect) * (1 - Math.exp(-dt * 6));
+        f.phase += dt * f.rate;
+
+        const accLat = ((f.vel.x - _prevV.x) * Math.sin(f.yaw) + (f.vel.z - _prevV.z) * Math.cos(f.yaw)) / Math.max(dt, 1e-3);
+        const swayT = clamp(-accLat * 0.5, -1.5, 1.5) + clamp(-f.yawVel * 0.15, -1, 1);
+        f.sway += (swayT - f.sway) * (1 - Math.exp(-dt * 6));
+        const speedN = clamp(sp2 / 1.2, 0, 1);
+
+        const fu = f.fu;
+        fu.uPhase.value = f.phase;
+        fu.uAmp.value = f.amp;
+        fu.uBend.value = f.bend;
+        fu.uSpeed.value = speedN;
+        fu.uSway.value = f.sway;
+        fu.uPect.value = f.pect;
+        fu.uRuf.value = f.P.ruf * (0.7 + 0.5 * speedN);
+
+        f.scale += ((f.leaving ? 0 : 1) - f.scale) * (1 - Math.exp(-dt * 1.6));
+        f.group.position.copy(f.pos);
+        f.group.rotation.set(f.roll, f.yaw, f.pitch, 'YZX');
+        f.group.scale.setScalar(Math.max(0.001, f.size * f.scale));
+
+        if (f.leaving && f.scale < 0.03) {
+            sceneFish.remove(f.group);
+            f.group.traverse(o => {
+                if (o.geometry) o.geometry.dispose();
+                if (o.material) o.material.dispose();
+            });
+            fishList.splice(n, 1);
+        }
+    }
+}
+
+
+/* ================= 水草（v3.1） ================= */
+const CAMD = 9;
+const PLANT_VERT = `
+attribute float aH;
+attribute float aSeed;
+attribute float aPart;
+uniform float uTime;
+uniform float uLen;
+uniform float uPhase;
+uniform float uSway;
+uniform float uEnergy;
+uniform float uExc;
+uniform float uFlut;
+uniform vec2 uSpring;
+uniform vec4 uFish[12];
+uniform vec3 uFishV[12];
+varying vec3 vN;
+varying vec3 vView;
+varying vec3 vWorld;
+varying vec2 vUv;
+varying float vH;
+varying float vSeed;
+varying float vPart;
+void main() {
+    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vec3 Nw = normalize(mat3(modelMatrix) * normal);
+    float h = aH;
+    float w = h * h * (0.6 + 0.4 * h);
+    float en = 0.7 + 1.1 * uEnergy;
+    float s1 = sin(uTime * 0.75 + h * 2.8 + aSeed * 6.2831 + uPhase);
+    float s2 = sin(uTime * 1.35 + h * 4.3 + aSeed * 17.0 + uPhase * 1.7);
+    float s3 = sin(uTime * 0.90 + h * 3.3 + aSeed * 11.0 + uPhase * 0.6);
+    vec2 D = uSway * en * w * uLen * vec2(0.7 * s1 + 0.3 * s2, 0.45 * s3);
+    D += uSpring * w * uLen * 0.6;
+    D += vec2(sin(uTime * 8.0 - h * 7.0 + aSeed * 9.0), cos(uTime * 9.5 - h * 6.0 + aSeed * 7.0)) * uExc * 0.04 * w * uLen;
+    vec3 fd = vec3(0.0);
+    float act = 0.0;
+    float wb = pow(max(h, 0.0001), 1.2);
+    vec3 q = wp.xyz + vec3(D.x, 0.0, D.y);
+    for (int i = 0; i < 12; i++) {
+        vec4 fc = uFish[i];
+        if (fc.w > 0.0) {
+            vec3 dd = (q - fc.xyz) * vec3(1.0, 1.0, 0.8);
+            float dist = length(dd);
+            float infl = fc.w * 1.3;
+            float k = 1.0 - smoothstep(fc.w * 0.5, infl, dist);
+            if (k > 0.0) {
+                vec3 dir = dd / max(dist, 0.001);
+                fd += vec3(dir.x, dir.y * 0.3, dir.z) * max(infl * 0.95 - dist, 0.0);
+                fd.xz += uFishV[i].xz * 0.25 * k;
+                act += k;
+            }
+        }
+    }
+    fd *= wb;
+    float fl = length(fd);
+    fd *= min(1.0, 0.8 * uLen / max(fl, 0.0001));
+    wp.xz += D + fd.xz;
+    wp.y += fd.y * 0.5;
+    vec2 lat = D + fd.xz;
+    wp.y -= 0.5 * dot(lat, lat) / (max(h, 0.12) * uLen + 0.05);
+    float amp = clamp(act, 0.0, 1.0) * uFlut;
+    wp.xyz += Nw * sin(uTime * 13.0 + h * 8.0 + aSeed * 30.0) * amp * 0.03 * uLen * (0.2 + h);
+    wp.xyz += Nw * sin(uTime * 2.1 + aSeed * 20.0 + h * 5.0) * 0.008 * uLen * h * en;
+    vWorld = wp.xyz;
+    vN = Nw;
+    vView = cameraPosition - wp.xyz;
+    vUv = uv;
+    vH = h;
+    vSeed = aSeed;
+    vPart = aPart;
+    gl_Position = projectionMatrix * viewMatrix * wp;
+}`;
+
+const PLANT_FRAG = `
+precision highp float;
+uniform float uKind;
+uniform float uTime;
+uniform float uLevel;
+uniform float uEnergy;
+uniform float uGrowN;
+uniform vec4 uBox;
+uniform vec3 uCol1;
+uniform vec3 uCol2;
+uniform vec3 uStem;
+uniform sampler2D uField;
+varying vec3 vN;
+varying vec3 vView;
+varying vec3 vWorld;
+varying vec2 vUv;
+varying float vH;
+varying float vSeed;
+varying float vPart;
+const float NF = 256.0;
+const float CD = 9.0;
+const float CAUSTIC = ${CAUSTIC_STRENGTH.toFixed(3)};
+float hash(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+}
+float vn(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+float fbm(vec2 p) {
+    float s = 0.0;
+    float a = 0.5;
+    for (int i = 0; i < 3; i++) {
+        s += a * vn(p);
+        p = p * 2.03 + vec2(7.1, 3.7);
+        a *= 0.5;
+    }
+    return s;
+}
+float surfAt(float x) {
+    float u = clamp((x - uBox.x) / (uBox.y - uBox.x), 0.0, 1.0) * (NF - 1.0);
+    float i0 = floor(u);
+    float f = u - i0;
+    float i1 = min(i0 + 1.0, NF - 1.0);
+    float a = texture2D(uField, vec2((i0 + 0.5) / NF, 0.5)).r;
+    float b = texture2D(uField, vec2((i1 + 0.5) / NF, 0.5)).r;
+    return mix(a, b, f);
+}
+void main() {
+    vec2 sp = vWorld.xy * CD / (CD - vWorld.z);
+    // 水槽の内側（ガラスの内面）からはみ出した部分は描かない
+    if (sp.x < uBox.x || sp.x > uBox.y) discard;
+    float hs = uLevel + surfAt(sp.x);
+    float d = hs - sp.y;
+    if (d < 0.0) discard;
+    vec3 V = normalize(vView);
+    vec3 N = normalize(vN);
+    if (dot(N, V) < 0.0) N = -N;
+    vec3 L = normalize(vec3(0.25, 0.9, 0.55));
+    vec3 H = normalize(L + V);
+    float ndl = dot(N, L);
+    float gloss = 0.3;
+    float transK = 0.4;
+    if (uKind > 0.5 && uKind < 1.5) { gloss = 0.95; transK = 0.15; }
+    else if (uKind > 1.5 && uKind < 2.5) { gloss = 0.6; transK = 0.35; }
+    else if (uKind > 2.5 && uKind < 3.5) { gloss = 0.4; transK = 0.7; }
+    else if (uKind > 3.5 && uKind < 4.5) { gloss = 0.45; transK = 0.5; }
+    else if (uKind > 4.5) { gloss = 0.2; transK = 0.8; }
+    vec3 col;
+    if (vPart > 0.5) {
+        col = mix(uStem * 0.8, mix(uStem, uCol2, 0.45), vH);
+        col *= 0.85 + 0.3 * vn(vec2(vUv.y * 30.0, vSeed * 40.0));
+        gloss *= 0.4;
+    } else {
+        float u = vUv.x;
+        float v = vUv.y;
+        float cu = abs(u - 0.5) * 2.0;
+        float grad = smoothstep(0.0, 1.0, mix(v, vH, 0.5));
+        col = mix(uCol1, uCol2, grad);
+        if (uKind > 4.5) {
+            col = mix(uCol1, uCol2, 0.25 + 0.75 * smoothstep(0.2, 1.0, vH));
+        } else if (uKind > 3.5) {
+            float red = smoothstep(0.35, 0.95, vH) * uGrowN;
+            col = mix(uCol1, uCol2, red);
+            col = mix(col, col * vec3(1.1, 0.9, 0.8), v * 0.4);
+        }
+        float mid = 1.0 - smoothstep(0.0, 0.10, cu);
+        float vein = 0.0;
+        if (uKind < 0.5) { mid *= 0.2; }
+        else if (uKind < 1.5) {
+            vein = pow(0.5 + 0.5 * cos((v * 14.0 + cu * 2.5) * 6.2832), 8.0) * (1.0 - mid);
+        } else if (uKind < 3.5) {
+            float nV = (uKind < 2.5) ? 9.0 : 6.0;
+            vein = pow(0.5 + 0.5 * cos(u * nV * 6.2832), 6.0) * 0.6;
+        } else {
+            mid *= 0.4;
+        }
+        float tex = 0.88 + 0.24 * fbm(vec2(u * 6.0 + vSeed * 9.0, v * 20.0 + vSeed * 7.0));
+        col *= tex;
+        float lighten = clamp(mid * 0.55 + vein * 0.35, 0.0, 1.0);
+        if (uKind > 4.5) lighten = 0.0;
+        col = mix(col, col * 1.5 + vec3(0.03, 0.05, 0.0), lighten);
+        col *= 1.0 - 0.18 * smoothstep(0.7, 1.0, cu);
+    }
+    float ao = mix(0.25, 1.0, smoothstep(0.0, 0.22, vH));
+    float diff = 0.30 + 0.70 * clamp(ndl * 0.5 + 0.5, 0.0, 1.0);
+    float back = max(-ndl, 0.0);
+    vec3 trans = col * vec3(0.75, 1.0, 0.35) * pow(back, 1.2) * transK * 1.6;
+    float spec = pow(max(dot(N, H), 0.0), 60.0) * gloss;
+    vec3 c = col * diff * ao + trans * ao + vec3(1.0, 0.96, 0.88) * spec * ao * 0.8;
+    float wf = 1.0 - smoothstep(0.5, 2.3, d);
+    vec2 qq = sp * 3.0;
+    float cn = sin(qq.x * 2.1 + sin(qq.y * 1.7 + uTime * 0.7) * 1.6 + uTime * 0.5)
+             * sin(qq.y * 2.3 + sin(qq.x * 1.9 - uTime * 0.6) * 1.6 - uTime * 0.4);
+    cn = pow(max(cn, 0.0), 3.0);
+    c *= 1.0 + 0.45 * CAUSTIC * cn * wf * (0.4 + uEnergy);
+    vec3 T = exp(-vec3(0.60, 0.17, 0.09) * d * 0.32);
+    vec3 scat = vec3(0.012, 0.20, 0.27) * exp(-d * 0.20) + vec3(0.0, 0.025, 0.06);
+    float fogA = 1.0 - exp(-d * 0.30);
+    c = mix(c * T, scat, fogA * 0.35);
+    float zf = clamp((-vWorld.z + 0.2) * 0.18, 0.0, 0.35);
+    c = mix(c, scat * 1.2, zf);
+    c = (c * (2.51 * c + 0.03)) / (c * (2.43 * c + 0.59) + 0.14);
+    c = pow(clamp(c, 0.0, 1.0), vec3(1.0 / 2.2));
+    gl_FragColor = vec4(c, 1.0);
+}`;
+
+function makeRng(seed) {
+    let a = seed >>> 0;
+    return function () {
+        a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+const v3norm = (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+const v3cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const v3dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+class PlantBuilder {
+    constructor() { this.pos = []; this.nor = []; this.uv = []; this.h = []; this.seed = []; this.part = []; this.idx = []; }
+    build() {
+        let my = 0.0001, mr = 0;
+        for (let i = 1; i < this.pos.length; i += 3) my = Math.max(my, this.pos[i]);
+        const k = 1 / my;
+        for (let i = 0; i < this.pos.length; i++) this.pos[i] *= k;
+        for (let i = 0; i < this.pos.length; i += 3) mr = Math.max(mr, Math.hypot(this.pos[i], this.pos[i + 2]));
+        const g = new THREE.BufferGeometry();
+        g.userData.rad = mr * 0.7;
+        for (let i = 0; i < this.h.length; i++) this.h[i] = Math.max(0, Math.min(1, this.pos[i * 3 + 1]));
+        g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
+        g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nor, 3));
+        g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2));
+        g.setAttribute('aH', new THREE.Float32BufferAttribute(this.h, 1));
+        g.setAttribute('aSeed', new THREE.Float32BufferAttribute(this.seed, 1));
+        g.setAttribute('aPart', new THREE.Float32BufferAttribute(this.part, 1));
+        g.setIndex(this.idx);
+        return g;
+    }
+}
+
+function addBlade(B, o) {
+    const segs = o.segs || 8, cols = o.cols || 3;
+    const D = v3norm(o.d);
+    const fa = o.face || 0;
+    const fdv = [Math.cos(fa), 0, Math.sin(fa)];
+    const dp = v3dot(fdv, D);
+    let S0 = [fdv[0] - D[0] * dp, fdv[1] - D[1] * dp, fdv[2] - D[2] * dp];
+    if (Math.hypot(S0[0], S0[1], S0[2]) < 1e-4) S0 = [1, 0, 0];
+    S0 = v3norm(S0);
+    const droop = o.droop || 0, tw = o.twist || 0, fold = o.fold || 0;
+    const wig = o.wiggle || 0, wf = o.wigF || 8, ws = o.wigS || 0;
+    const prof = o.prof || (() => 1);
+    const wd = o.width || 0.05;
+    const L = o.len;
+    const C = (t) => {
+        const wv = wig * L * Math.sin(t * wf + ws);
+        return [o.p[0] + D[0] * L * t + S0[0] * wv,
+                o.p[1] + D[1] * L * t - droop * L * t * t + S0[1] * wv,
+                o.p[2] + D[2] * L * t + S0[2] * wv];
+    };
+    const base = B.pos.length / 3;
+    for (let i = 0; i <= segs; i++) {
+        const t = i / segs;
+        const c = C(t);
+        const a = C(Math.min(1, t + 0.02)), b = C(Math.max(0, t - 0.02));
+        const T = v3norm([a[0] - b[0], a[1] - b[1], a[2] - b[2]]);
+        const sd = v3dot(S0, T);
+        let S = v3norm([S0[0] - T[0] * sd, S0[1] - T[1] * sd, S0[2] - T[2] * sd]);
+        if (tw) {
+            const ang = tw * t, cs = Math.cos(ang), sn = Math.sin(ang);
+            const cr = v3cross(T, S);
+            S = [S[0] * cs + cr[0] * sn, S[1] * cs + cr[1] * sn, S[2] * cs + cr[2] * sn];
+        }
+        const Nn = v3norm(v3cross(S, T));
+        const pr = prof(t);
+        const w = wd * pr * 0.5;
+        for (let j = 0; j < cols; j++) {
+            const uu = cols > 1 ? j / (cols - 1) : 0.5;
+            const s = uu * 2 - 1;
+            const lift = fold * wd * (1 - Math.abs(s)) * pr;
+            B.pos.push(c[0] + S[0] * w * s + Nn[0] * lift, c[1] + S[1] * w * s + Nn[1] * lift, c[2] + S[2] * w * s + Nn[2] * lift);
+            const n = v3norm([Nn[0] - S[0] * s * fold * 2, Nn[1] - S[1] * s * fold * 2, Nn[2] - S[2] * s * fold * 2]);
+            B.nor.push(n[0], n[1], n[2]);
+            B.uv.push(uu, t);
+            B.h.push(0);
+            B.seed.push(o.seed || 0);
+            B.part.push(o.part || 0);
+        }
+    }
+    for (let i = 0; i < segs; i++) {
+        for (let j = 0; j < cols - 1; j++) {
+            const a0 = base + i * cols + j, b0 = a0 + 1, c0 = a0 + cols, d0 = c0 + 1;
+            B.idx.push(a0, b0, c0, b0, d0, c0);
+        }
+    }
+}
+function addStem(B, o) {
+    [0, Math.PI / 2].forEach((a) => {
+        addBlade(B, Object.assign({}, o, { face: (o.face || 0) + a, cols: 2, part: 1, prof: o.prof || ((t) => 1 - 0.3 * t) }));
+    });
+}
+
+function buildCarpet(seed) {
+    const r = makeRng(seed), B = new PlantBuilder();
+    for (let i = 0; i < 46; i++) {
+        const a = r() * 6.2832, rad = Math.sqrt(r()) * 0.9, lean = 0.08 + r() * 0.55, az = r() * 6.2832;
+        addBlade(B, {
+            p: [Math.cos(a) * rad, -0.03, Math.sin(a) * rad * 0.6],
+            d: [Math.cos(az) * lean, 1, Math.sin(az) * lean],
+            len: 0.55 + r() * 0.5, width: 0.04, face: r() * 6.28, droop: 0.2 + r() * 0.4,
+            twist: (r() - 0.5) * 2, segs: 6, cols: 2, prof: (t) => Math.max(0, 1 - Math.pow(t, 2.4)), seed: r()
+        });
+    }
+    return B.build();
+}
+function buildAnubias(seed) {
+    const r = makeRng(seed), B = new PlantBuilder();
+    const n = 8;
+    for (let i = 0; i < n; i++) {
+        const az = i / n * 6.2832 + r() * 0.6, lean = 0.1 + r() * 0.35, pet = 0.32 + r() * 0.28;
+        const D = [Math.cos(az) * Math.sin(lean), Math.cos(lean), Math.sin(az) * Math.sin(lean)];
+        const p0 = [Math.cos(az) * 0.05, 0, Math.sin(az) * 0.05];
+        const sd = r();
+        addStem(B, { p: p0, d: D, len: pet, width: 0.03, face: az, segs: 4, seed: sd });
+        const tip = [p0[0] + D[0] * pet, p0[1] + D[1] * pet, p0[2] + D[2] * pet];
+        const e = 0.9 + r() * 0.35;
+        addBlade(B, {
+            p: tip, d: [Math.cos(az) * Math.sin(e), Math.cos(e), Math.sin(az) * Math.sin(e)],
+            len: 0.34 + r() * 0.1, width: 0.30 + r() * 0.06, face: az + Math.PI / 2, droop: 0.1, fold: 0.12,
+            twist: (r() - 0.5) * 0.6, segs: 10, cols: 5,
+            prof: (t) => Math.pow(Math.max(Math.sin(Math.PI * Math.pow(t, 0.55)), 0), 0.85) * 0.95 + 0.05 * (1 - t),
+            seed: sd
+        });
+    }
+    return B.build();
+}
+function buildSword(seed) {
+    const r = makeRng(seed), B = new PlantBuilder();
+    const n = 13;
+    for (let i = 0; i < n; i++) {
+        const az = i * 2.39996 + r() * 0.3;
+        const lean = 0.10 + (i / n) * 0.35 + r() * 0.15;
+        addBlade(B, {
+            p: [Math.cos(az) * 0.05, -0.02, Math.sin(az) * 0.05],
+            d: [Math.cos(az) * Math.sin(lean), Math.cos(lean), Math.sin(az) * Math.sin(lean)],
+            len: 0.7 + r() * 0.3, width: 0.15, face: az + Math.PI / 2, droop: 0.12 + 0.25 * lean,
+            twist: (r() - 0.5) * 0.8, fold: 0.10, segs: 14, cols: 5,
+            prof: (t) => {
+                const a = Math.pow(Math.max(Math.sin(Math.PI * Math.pow(t, 0.65)), 0), 0.8);
+                return a * 0.88 + 0.12 * (1 - t) * (1 - t);
+            },
+            seed: r()
+        });
+    }
+    return B.build();
+}
+function buildVallis(seed) {
+    const r = makeRng(seed), B = new PlantBuilder();
+    for (let i = 0; i < 22; i++) {
+        const az = r() * 6.2832, lean = 0.05 + r() * 0.25, a = r() * 6.2832, rad = Math.sqrt(r()) * 0.15;
+        addBlade(B, {
+            p: [Math.cos(a) * rad, -0.02, Math.sin(a) * rad],
+            d: [Math.cos(az) * Math.sin(lean), Math.cos(lean), Math.sin(az) * Math.sin(lean)],
+            len: 0.65 + r() * 0.35, width: 0.028 * (0.8 + 0.4 * r()), face: r() * 6.28,
+            droop: 0.1 + r() * 0.3, twist: (r() - 0.5) * 10, wiggle: 0.02 + r() * 0.03, wigF: 6 + r() * 6, wigS: r() * 6,
+            segs: 28, cols: 3, fold: 0.05,
+            prof: (t) => Math.min(1, 0.5 + t * 10) * (1 - Math.pow(t, 5) * 0.95),
+            seed: r()
+        });
+    }
+    return B.build();
+}
+function buildRotala(seed) {
+    const r = makeRng(seed), B = new PlantBuilder();
+    for (let s = 0; s < 6; s++) {
+        const az = r() * 6.2832, lean = 0.03 + r() * 0.16, H = 0.72 + r() * 0.28;
+        const Dn = [Math.cos(az) * Math.sin(lean), Math.cos(lean), Math.sin(az) * Math.sin(lean)];
+        const p0 = [(r() - 0.5) * 0.4, -0.02, (r() - 0.5) * 0.25];
+        const sd = r(), droop = 0.06 + r() * 0.1;
+        addStem(B, { p: p0, d: Dn, len: H, width: 0.012, face: az, droop: droop, segs: 12, seed: sd, prof: (t) => 1 - 0.4 * t });
+        let t = 0.07, k = 0;
+        while (t < 0.99) {
+            const c = [p0[0] + Dn[0] * H * t, p0[1] + Dn[1] * H * t - droop * H * t * t, p0[2] + Dn[2] * H * t];
+            for (let m = 0; m < 4; m++) {
+                const ang = k * 0.8 + m * Math.PI / 2;
+                const el = 0.85 + r() * 0.2;
+                const ld = [Dn[0] * Math.cos(el) + Math.cos(ang) * Math.sin(el), Dn[1] * Math.cos(el), Dn[2] * Math.cos(el) + Math.sin(ang) * Math.sin(el)];
+                addBlade(B, {
+                    p: c, d: ld, len: (0.10 - 0.04 * t) * (0.8 + 0.4 * r()), width: 0.016, face: ang + Math.PI / 2,
+                    droop: 0.15, segs: 3, cols: 3, fold: 0.1,
+                    prof: (u) => Math.pow(Math.sin(Math.PI * Math.pow(u, 0.7)), 0.8) + 0.04,
+                    seed: sd + 0.03 * r()
+                });
+            }
+            t += 0.05 - 0.022 * t; k++;
+        }
+    }
+    return B.build();
+}
+function buildCabomba(seed) {
+    const r = makeRng(seed), B = new PlantBuilder();
+    for (let s = 0; s < 4; s++) {
+        const az = r() * 6.2832, lean = 0.03 + r() * 0.14, H = 0.75 + r() * 0.25;
+        const Dn = [Math.cos(az) * Math.sin(lean), Math.cos(lean), Math.sin(az) * Math.sin(lean)];
+        const p0 = [(r() - 0.5) * 0.35, -0.02, (r() - 0.5) * 0.25];
+        const sd = r(), droop = 0.05 + r() * 0.1;
+        addStem(B, { p: p0, d: Dn, len: H, width: 0.014, face: az, droop: droop, segs: 12, seed: sd });
+        let t = 0.06, k = 0;
+        while (t < 0.99) {
+            const c = [p0[0] + Dn[0] * H * t, p0[1] + Dn[1] * H * t - droop * H * t * t, p0[2] + Dn[2] * H * t];
+            for (let m = 0; m < 2; m++) {
+                const ang = k * 0.9 + m * Math.PI;
+                const nn = 7;
+                for (let q = 0; q < nn; q++) {
+                    const phi = (q / (nn - 1) - 0.5) * 2.0;
+                    const aa = ang + phi, el = 0.25 + r() * 0.25;
+                    const nd = [Math.cos(aa) * Math.cos(el), Math.sin(el), Math.sin(aa) * Math.cos(el)];
+                    const ln = (0.15 - 0.07 * t) * (1 - Math.abs(phi) * 0.25) * (0.85 + 0.3 * r());
+                    const s2 = sd + 0.05 * r();
+                    addBlade(B, { p: c, d: nd, len: ln, width: 0.006, face: aa + 1.57, segs: 3, cols: 2, droop: 0.08, seed: s2, prof: (u) => 1 - 0.6 * u });
+                    const pm = [c[0] + nd[0] * ln * 0.55, c[1] + nd[1] * ln * 0.55, c[2] + nd[2] * ln * 0.55];
+                    [-1, 1].forEach((sg) => {
+                        const ca = aa + sg * 0.5;
+                        addBlade(B, {
+                            p: pm, d: [Math.cos(ca) * Math.cos(el), Math.sin(el) + 0.1, Math.sin(ca) * Math.cos(el)],
+                            len: ln * 0.5, width: 0.005, face: ca + 1.57, segs: 2, cols: 2, seed: s2, prof: (u) => 1 - 0.7 * u
+                        });
+                    });
+                }
+            }
+            t += 0.05 - 0.02 * t; k++;
+        }
+    }
+    return B.build();
+}
+
+/* ---- 種類の定義：水位(g)がs0を超えると出現し、spanかけて最大長(Lmax)まで伸びる ---- */
+const PLANT_SPECIES = [
+    { name: 'carpet',  kind: 0, s0: 0.03, span: 0.22, Lmax: 0.50, sway: 0.06, sink: 0.10, col1: [0.08, 0.24, 0.04], col2: [0.34, 0.60, 0.14], stem: [0.20, 0.30, 0.10], build: buildCarpet },
+    { name: 'anubias', kind: 1, s0: 0.10, span: 0.25, Lmax: 0.95, sway: 0.02, sink: 0.10, col1: [0.04, 0.15, 0.05], col2: [0.09, 0.27, 0.08], stem: [0.10, 0.20, 0.07], build: buildAnubias },
+    { name: 'sword',   kind: 2, s0: 0.22, span: 0.30, Lmax: 1.50, sway: 0.07, sink: 0.10, col1: [0.10, 0.30, 0.06], col2: [0.28, 0.52, 0.12], stem: [0.16, 0.30, 0.08], build: buildSword },
+    { name: 'vallis',  kind: 3, s0: 0.34, span: 0.40, Lmax: 3.40, sway: 0.12, sink: 0.10, col1: [0.10, 0.30, 0.08], col2: [0.38, 0.62, 0.18], stem: [0.16, 0.30, 0.08], build: buildVallis },
+    { name: 'rotala',  kind: 4, s0: 0.50, span: 0.35, Lmax: 2.70, sway: 0.08, sink: 0.10, col1: [0.20, 0.42, 0.08], col2: [0.85, 0.36, 0.12], stem: [0.40, 0.18, 0.12], build: buildRotala },
+    { name: 'cabomba', kind: 5, s0: 0.65, span: 0.30, Lmax: 3.30, sway: 0.10, sink: 0.10, col1: [0.14, 0.38, 0.08], col2: [0.40, 0.68, 0.20], stem: [0.20, 0.38, 0.10], build: buildCabomba }
+];
+// [種類, 水槽の横位置(0..1), 奥行きz]  ← v3の17株から9株へ半減（種類は6種のまま）
+const PLANT_LAYOUT = [
+    ['carpet',  0.16,  0.30], ['carpet',  0.84, -0.10],
+    ['anubias', 0.72,  0.35],
+    ['sword',   0.30, -0.30],
+    ['vallis',  0.06, -0.70], ['vallis',  0.60, -0.80],
+    ['rotala',  0.45, -0.55], ['rotala',  0.93, -0.40],
+    ['cabomba', 0.78, -0.90]
+];
+
+let plants = [], plantGroup = null, fishU = null, fishVU = null;
+
+function initPlants() {
+    fishU = { value: Array.from({ length: 12 }, () => new THREE.Vector4(0, 0, 0, 0)) };
+    fishVU = { value: Array.from({ length: 12 }, () => new THREE.Vector3()) };
+    plantGroup = new THREE.Group();
+    sceneFish.add(plantGroup);
+    const shared = {
+        uTime: quadMat.uniforms.uTime, uLevel: quadMat.uniforms.uLevel, uEnergy: quadMat.uniforms.uEnergy,
+        uBox: quadMat.uniforms.uBox, uField: quadMat.uniforms.uField, uFish: fishU, uFishV: fishVU
+    };
+    PLANT_LAYOUT.forEach((e, idx) => {
+        const sp = PLANT_SPECIES.find((s) => s.name === e[0]);
+        const geo = sp.build(1000 + idx * 77);
+        const mat = new THREE.ShaderMaterial({
+            uniforms: Object.assign({
+                uKind: { value: sp.kind }, uLen: { value: 0.1 }, uPhase: { value: Math.random() * 6.28 },
+                uSway: { value: sp.sway }, uExc: { value: 0 }, uFlut: { value: 1 }, uGrowN: { value: 0 },
+                uSpring: { value: new THREE.Vector2() },
+                uCol1: { value: new THREE.Vector3(sp.col1[0], sp.col1[1], sp.col1[2]) },
+                uCol2: { value: new THREE.Vector3(sp.col2[0], sp.col2[1], sp.col2[2]) },
+                uStem: { value: new THREE.Vector3(sp.stem[0], sp.stem[1], sp.stem[2]) }
+            }, shared),
+            vertexShader: PLANT_VERT, fragmentShader: PLANT_FRAG, side: THREE.DoubleSide
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.frustumCulled = false;
+        mesh.visible = false;
+        plantGroup.add(mesh);
+        plants.push({
+            rad: geo.userData.rad, sp: sp, mesh: mesh, mat: mat, fx: e[1], z: e[2], k: 0.85 + 0.3 * Math.random(),
+            len: 0, born: false, sx: 0, sy: 0, vx: 0, vy: 0
+        });
+    });
+}
+
+function plantGroundY(xs) {
+    return TANK.yb + GRAVEL + 0.035 * Math.sin(xs * 3.1) + 0.02 * Math.sin(xs * 8.3 + 1.0);
+}
+
+function updateFishUniforms() {
+    if (!fishU) return;
+    for (let i = 0; i < 12; i++) fishU.value[i].w = 0;
+    let k = 0;
+    for (let n = 0; n < fishList.length && k < 6; n++) {
+        const f = fishList[n];
+        const s = f.size * f.scale;
+        if (s < 0.06) continue;
+        headingOf(f, _head);
+        fishU.value[k * 2].set(f.pos.x, f.pos.y, f.pos.z, s * 0.38);
+        fishU.value[k * 2 + 1].set(
+            f.pos.x - _head.x * s * (0.5 + 0.35 * f.P.tailLen),
+            f.pos.y - _head.y * s * (0.5 + 0.35 * f.P.tailLen),
+            f.pos.z - _head.z * s * (0.5 + 0.35 * f.P.tailLen),
+            s * (0.10 + 0.45 * f.P.tailSpread));
+        fishVU.value[k * 2].copy(f.vel);
+        fishVU.value[k * 2 + 1].copy(f.vel);
+        k++;
+    }
+}
+
+function updatePlants(dt) {
+    if (!plants.length) return;
+    const g = clamp((level - TANK.levelMin) / (TANK.levelMax - TANK.levelMin), 0, 1);
+    for (let i = 0; i < plants.length; i++) {
+        const pl = plants[i], sp = pl.sp, m = pl.mesh;
+        const pz = (CAMD - pl.z) / CAMD;
+        // 水槽の内側に収まるよう、最大サイズに応じて左右の余白を確保
+        const margin = 0.10 + pl.rad * sp.Lmax * pl.k * 0.85;
+        const lo = TANK.xl + margin, hi = TANK.xr - margin;
+        const xs = lo < hi ? clamp(TANK.xl + pl.fx * (TANK.xr - TANK.xl), lo, hi) : (TANK.xl + TANK.xr) / 2;
+        const baseS = plantGroundY(xs) - sp.sink;
+        const avail = (level - baseS) * 0.95 - 0.08;
+        const grow = smooth01((g - sp.s0) / sp.span);
+        const target = Math.min(sp.Lmax * pl.k * grow, Math.max(avail, 0));
+        pl.len += (target - pl.len) * (1 - Math.exp(-dt * 1.4));
+        if (pl.len < 0.03) { m.visible = false; pl.born = false; pl.sx = pl.sy = pl.vx = pl.vy = 0; continue; }
+        if (!pl.born) { pl.born = true; burstBubbles(xs, baseS + 0.12, 5); }
+        m.visible = true;
+        const sc = pl.len * pz;
+        m.position.set(xs * pz, baseS * pz, pl.z);
+        m.scale.setScalar(sc);
+
+        let fx = 0, fz = 0, prox = 0;
+        const top = m.position.y + sc * 1.0;
+        for (let n = 0; n < fishList.length; n++) {
+            const f = fishList[n];
+            const fs = f.size * f.scale;
+            if (fs < 0.1) continue;
+            if (f.pos.y < m.position.y - 0.3 || f.pos.y > top + fs * 0.4) continue;
+            const dx = m.position.x - f.pos.x, dz = (m.position.z - f.pos.z) * 1.2;
+            const hd = Math.hypot(dx, dz) + 1e-4;
+            const reach = fs * 0.38 + pl.rad * sc + 0.15 * sc;
+            if (hd < reach) {
+                const k = 1 - hd / reach;
+                const speed = f.vel.length();
+                const F = k * (3 + 6 * speed);
+                fx += dx / hd * F + f.vel.x * k * 3;
+                fz += dz / hd * F + f.vel.z * k * 3;
+                prox = Math.max(prox, k);
+            }
+        }
+        const K = 14, Cd = 3.5;
+        pl.vx += (-K * pl.sx - Cd * pl.vx + fx) * dt;
+        pl.vy += (-K * pl.sy - Cd * pl.vy + fz) * dt;
+        pl.sx = clamp(pl.sx + pl.vx * dt, -0.4, 0.4);
+        pl.sy = clamp(pl.sy + pl.vy * dt, -0.4, 0.4);
+
+        const u = pl.mat.uniforms;
+        u.uLen.value = sc;
+        u.uSpring.value.set(pl.sx, pl.sy);
+        u.uExc.value = Math.min(1, Math.hypot(pl.vx, pl.vy) * 0.6 + prox);
+        u.uGrowN.value = grow;
+    }
+}
+
+/* ================= Three.js ================= */
+let renderer, scene, sceneFish, scenePts, camera, camP, quad, quadMat, pointsMesh, pointsMat, fieldTex;
+const pPos = new Float32Array(MAXP * 3);
+const pSize = new Float32Array(MAXP);
+const pType = new Float32Array(MAXP);
+const pAlpha = new Float32Array(MAXP);
+let streamAmt = 0, energy = 0.2, flashAmt = 0;
+
+function initThree() {
+    const container = document.getElementById('canvas-container');
+    updateWaterLevelLimits();
+    level = targetLevel;
+
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.autoClear = false;
+    container.appendChild(renderer.domElement);
+
+    scene = new THREE.Scene();
+    sceneFish = new THREE.Scene();
+    scenePts = new THREE.Scene();
+    camera = new THREE.OrthographicCamera(-TANK.halfW, TANK.halfW, 3, -3, -10, 10);
+    const camDist = 9;
+    camP = new THREE.PerspectiveCamera(2 * Math.atan(3 / camDist) * 180 / Math.PI, window.innerWidth / window.innerHeight, 0.1, 60);
+    camP.position.set(0, 0, camDist);
+
+    fieldTex = new THREE.DataTexture(fieldData, N, 1, THREE.RGBAFormat, THREE.FloatType);
+    fieldTex.minFilter = THREE.NearestFilter;
+    fieldTex.magFilter = THREE.NearestFilter;
+    fieldTex.generateMipmaps = false;
+    fieldTex.needsUpdate = true;
+
+    quadMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0 }, uAspect: { value: 1.78 }, uPx: { value: 0.005 },
+            uLevel: { value: level }, uFill: { value: 0 }, uStream: { value: 0 },
+            uEnergy: { value: 0.2 }, uFlash: { value: 0 }, uExposure: { value: 1.0 },
+            uBox: { value: new THREE.Vector4(TANK.xl, TANK.xr, TANK.yb, 3.2) },
+            uField: { value: fieldTex }
+        },
+        vertexShader: QUAD_VERT,
+        fragmentShader: TANK_FRAG,
+        depthTest: false,
+        depthWrite: false
+    });
+    quad = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), quadMat);
+    quad.frustumCulled = false;
+    scene.add(quad);
+    initPlants();
+
+    const pg = new THREE.BufferGeometry();
+    const posA = new THREE.BufferAttribute(pPos, 3);
+    const sizeA = new THREE.BufferAttribute(pSize, 1);
+    const typeA = new THREE.BufferAttribute(pType, 1);
+    const alphaA = new THREE.BufferAttribute(pAlpha, 1);
+    [posA, sizeA, typeA, alphaA].forEach(a => a.setUsage(THREE.DynamicDrawUsage));
+    pg.setAttribute('position', posA);
+    pg.setAttribute('aSize', sizeA);
+    pg.setAttribute('aType', typeA);
+    pg.setAttribute('aAlpha', alphaA);
+    pg.setDrawRange(0, 0);
+    pointsMat = new THREE.ShaderMaterial({
+        uniforms: { uPxPerUnit: { value: 180 } },
+        vertexShader: POINT_VERT,
+        fragmentShader: POINT_FRAG,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false
+    });
+    pointsMesh = new THREE.Points(pg, pointsMat);
+    pointsMesh.frustumCulled = false;
+    scenePts.add(pointsMesh);
+
+    onResize();
+
+    const clock = new THREE.Clock();
+    let acc = 0;
+    const STEP = 1 / 60;
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.033);
+        simTime += dt;
+
+        acc += dt;
+        while (acc >= STEP) { stepWave(); stepFoam(STEP); acc -= STEP; }
+
+        level += (targetLevel - level) * (1 - Math.exp(-dt * 2.5));
+
+        const flowing = isTimerRunning && remainingSeconds > 0;
+        streamAmt += ((flowing ? 1 : 0) - streamAmt) * (1 - Math.exp(-dt * 5));
+
+        for (let i = 0; i < N; i++) {
+            surfH[i] = currentWave[i] + ambientWave(xAt(i), simTime);
+        }
+
+        const impactX = 0.012 * Math.sin(level * 3 + simTime * 4);
+        const ci = idxAt(impactX);
+        if (flowing) {
+            addImpulse(clamp(ci + Math.round((Math.random() - 0.5) * 4), 0, N - 1), 0.009);
+            addFoam(ci, dt * 1.2);
+            const surfY = level + surfH[ci];
+            const nb = Math.random() < 0.8 ? 2 : 1;
+            for (let k = 0; k < nb; k++) spawnBubble(impactX + (Math.random() - 0.5) * 0.1, surfY - 0.02);
+            if (Math.random() < 0.6) spawnDroplet(impactX + (Math.random() - 0.5) * 0.08, surfY + 0.01);
+        }
+
+        updateParticles(dt);
+        updateFish(dt, flowing);
+        updateFishUniforms();
+        updatePlants(dt);
+
+        let e2 = 0;
+        for (let i = 0; i < N; i++) e2 += currentWave[i] * currentWave[i];
+        const rms = Math.sqrt(e2 / N);
+        const eTarget = Math.min(1, rms * 8 + 0.6 * streamAmt);
+        energy += (eTarget - energy) * (1 - Math.exp(-dt * 2));
+
+        for (let i = 0; i < N; i++) {
+            fieldData[i * 4] = surfH[i];
+            fieldData[i * 4 + 1] = foam[i];
+        }
+        fieldTex.needsUpdate = true;
+
+        const n = parts.length;
+        for (let i = 0; i < n; i++) {
+            const p = parts[i];
+            pPos[i * 3] = p.x; pPos[i * 3 + 1] = p.y; pPos[i * 3 + 2] = 0;
+            pSize[i] = p.r; pType[i] = p.type; pAlpha[i] = p.alpha;
+        }
+        const g = pointsMesh.geometry;
+        g.setDrawRange(0, n);
+        g.attributes.position.needsUpdate = true;
+        g.attributes.aSize.needsUpdate = true;
+        g.attributes.aType.needsUpdate = true;
+        g.attributes.aAlpha.needsUpdate = true;
+
+        const timeUp = document.body.classList.contains('time-up-active');
+        const flashTarget = timeUp ? (0.5 + 0.5 * Math.sin(simTime * 6.283)) * 0.55 : 0;
+        flashAmt += (flashTarget - flashAmt) * (1 - Math.exp(-dt * 10));
+
+        const u = quadMat.uniforms;
+        u.uTime.value = simTime;
+        u.uLevel.value = level;
+        u.uFill.value = fillFrac;
+        u.uStream.value = streamAmt;
+        u.uEnergy.value = energy;
+        u.uFlash.value = flashAmt;
+        u.uBox.value.set(TANK.xl, TANK.xr, TANK.yb, 3.2);
+
+        renderer.clear();
+        renderer.render(scene, camera);
+        renderer.clearDepth();
+        renderer.render(sceneFish, camP);
+        renderer.render(scenePts, camera);
+    }
+    animate();
+}
+
+function onResize() {
+    if (!renderer || !camera) return;
+    updateWaterLevelLimits();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.left = -TANK.halfW;
+    camera.right = TANK.halfW;
+    camera.updateProjectionMatrix();
+    camP.aspect = window.innerWidth / Math.max(1, window.innerHeight);
+    camP.updateProjectionMatrix();
+    quad.scale.set(TANK.halfW * 2, 6, 1);
+    const sz = renderer.getDrawingBufferSize(new THREE.Vector2());
+    quadMat.uniforms.uAspect.value = TANK.halfW / 3;
+    quadMat.uniforms.uPx.value = 6 / Math.max(1, sz.y);
+    pointsMat.uniforms.uPxPerUnit.value = Math.max(1, sz.y) / 6;
+}
+window.addEventListener('resize', onResize);
+
+window.addEventListener('DOMContentLoaded', () => {
+    refreshDisplay();
+    if (typeof THREE === 'undefined') {
+        console.error('Three.js の読み込みに失敗しました（ネット接続を確認）');
+        return;
+    }
+    try {
+        initThree();
+    } catch (e) {
+        console.error('3D初期化エラー:', e);
+    }
+});
+</script>
+</body>
+</html>

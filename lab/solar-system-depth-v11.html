@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Solar System Galactic Motion Simulation</title>
+<style>
+:root{--bg:#090b12;--panel:rgba(12,18,30,0.82);--panel-border:rgba(255,255,255,0.1);--text:#eef4ff;--muted:#9fb2d1;--accent:#6fd3ff;--radius:18px;}
+*{box-sizing:border-box;}
+body{margin:0;min-height:100vh;display:grid;grid-template-columns:380px 1fr;
+background:radial-gradient(circle at 20% 10%, rgba(79,126,255,0.14), transparent 24%),radial-gradient(circle at 80% 20%, rgba(255,210,96,0.12), transparent 18%),linear-gradient(180deg,#06070b,#0b1020 58%,#06070a);
+color:var(--text);font-family:Inter,"Segoe UI",sans-serif;}
+.panel{padding:22px;background:var(--panel);border-right:1px solid var(--panel-border);backdrop-filter:blur(18px);display:flex;flex-direction:column;gap:16px;overflow-y:auto;}
+.card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius);padding:16px;}
+h1{margin:0 0 6px;font-size:clamp(1.4rem,2vw,1.9rem);line-height:1.15;}
+p{margin:0;line-height:1.55;color:var(--muted);font-size:0.92rem;}
+.control-group{display:grid;gap:8px;}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:center;}
+.value{color:var(--accent);font-variant-numeric:tabular-nums;font-size:0.9rem;}
+label{font-size:0.9rem;}
+input[type="range"]{width:100%;accent-color:var(--accent);}
+.toggle-row{display:flex;gap:8px;flex-wrap:wrap;}
+button{border:1px solid rgba(255,255,255,0.12);color:var(--text);background:rgba(255,255,255,0.06);padding:9px 12px;border-radius:999px;cursor:pointer;transition:transform .16s ease,background .16s ease,border-color .16s ease;font-size:0.85rem;}
+button:hover{transform:translateY(-1px);background:rgba(255,255,255,0.1);}
+button.active{background:rgba(111,211,255,0.16);border-color:rgba(111,211,255,0.42);}
+.mode-btn{width:100%;text-align:center;}
+.stage-wrap{position:relative;display:grid;place-items:center;overflow:hidden;}
+canvas{aspect-ratio:1100/900;width:min(94vw - 420px, 94vh * 1100 / 900, 1100px);height:auto;max-width:calc(100vw - 420px);max-height:94vh;display:block;background:#05070d;cursor:grab;touch-action:none;}
+canvas.dragging{cursor:grabbing;}
+.hud{position:absolute;left:22px;bottom:22px;background:rgba(10,16,28,0.72);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:12px 15px;backdrop-filter:blur(12px);min-width:230px;}
+.hud strong{display:block;margin-bottom:6px;font-size:0.95rem;}
+.hud span{display:block;color:var(--muted);line-height:1.5;font-size:0.85rem;}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
+.legend span{display:flex;align-items:center;gap:5px;font-size:0.78rem;color:var(--muted);}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+@media (max-width:960px){body{grid-template-columns:1fr;}.panel{border-right:none;border-bottom:1px solid var(--panel-border);}canvas{max-width:100vw;width:min(100vw,780px);height:min(100vw,640px);}.hud{left:12px;right:12px;bottom:12px;min-width:0;}}
+</style>
+</head>
+<body>
+<aside class="panel">
+<section>
+<h1>Solar System's Galactic Journey</h1>
+<p>Two views: the familiar Solar System from above, and the Galactic View showing how the Sun drags every planet through the Milky Way in a helical path.</p>
+</section>
+
+<section class="card">
+<div class="toggle-row">
+<button id="modeSolar" class="mode-btn active">Solar System View</button>
+<button id="modeGalactic" class="mode-btn">Galactic View</button>
+</div>
+</section>
+
+<section class="card control-group">
+<div class="row"><label for="speed">Time Speed</label><span class="value" id="speedValue">1.0x</span></div>
+<input id="speed" type="range" min="0.1" max="8" step="0.1" value="1" />
+<div class="row" id="radiusRow"><label for="radius">Earth Orbit Radius</label><span class="value" id="radiusValue">1.00 AU</span></div>
+<input id="radius" type="range" min="0.6" max="1.8" step="0.01" value="1" />
+<div class="row" id="eccRow"><label for="eccentricity">Earth Eccentricity</label><span class="value" id="eccValue">0.017</span></div>
+<input id="eccentricity" type="range" min="0" max="0.2" step="0.001" value="0.017" />
+</section>
+
+<section class="card control-group" id="galacticControls" style="display:none;">
+<div class="row"><label for="galSpeed">Galactic Drift Speed</label><span class="value" id="galSpeedValue">1.0x</span></div>
+<input id="galSpeed" type="range" min="0" max="5" step="0.1" value="1" />
+<div class="row"><label for="tilt">Ecliptic Tilt vs Galactic Plane</label><span class="value" id="tiltValue">60°</span></div>
+<input id="tilt" type="range" min="0" max="90" step="1" value="60" />
+<div class="toggle-row">
+<button id="cameraBtn" class="active">Camera: Follow Sun</button>
+</div>
+<p>The Sun's own path bobs up and down through the galactic disk. Planets spiral around this moving line instead of tracing flat circles. Switch the camera to see the Sun physically drift across a fixed frame.</p>
+</section>
+
+<section class="card control-group">
+<div class="toggle-row">
+<button id="pauseBtn">Pause</button>
+<button id="trailBtn" class="active">Trails ON</button>
+<button id="labelBtn" class="active">Labels ON</button>
+<button id="resetBtn">Reset</button>
+</div>
+</section>
+
+<section class="card control-group">
+<div class="toggle-row">
+<button id="sizeModeBtn" class="mode-btn">Size: Schematic</button>
+</div>
+<p>Schematic sizes are exaggerated for visibility. Realistic mode approximates true relative diameters (still compressed, not to scale with distances).</p>
+</section>
+
+<section class="card control-group">
+<div class="row"><label for="zoom">Zoom</label><span class="value" id="zoomValue">1.00x</span></div>
+<input id="zoom" type="range" min="0.2" max="6" step="0.05" value="1" />
+<div class="toggle-row">
+<button id="zoomInBtn">Zoom In (+)</button>
+<button id="zoomOutBtn">Zoom Out (-)</button>
+<button id="zoomResetBtn">Reset View</button>
+</div>
+<p>Scroll to zoom, drag to pan. Works in both Solar System and Galactic views.</p>
+</section>
+
+<section class="card">
+<p id="infoText">This is a simplified educational model: uniform angular speeds and elliptical shapes approximate real orbits, but proportions are not to true scale.</p>
+</section>
+</aside>
+
+<main class="stage-wrap">
+<canvas id="sim" width="1100" height="900" aria-label="Solar system and galactic motion simulation"></canvas>
+<div class="hud">
+<strong id="hudTitle">Current Values</strong>
+<span id="dayLabel">Elapsed days: 0.0</span>
+<span id="distanceLabel">Earth-Sun distance: 1.000 AU</span>
+<span id="angleLabel">Earth orbital angle: 0.0°</span>
+<div class="legend" id="legend"></div>
+</div>
+</main>
+
+<script>
+const canvas=document.getElementById('sim');
+const ctx=canvas.getContext('2d');
+const speedInput=document.getElementById('speed');
+const radiusInput=document.getElementById('radius');
+const eccInput=document.getElementById('eccentricity');
+const galSpeedInput=document.getElementById('galSpeed');
+const tiltInput=document.getElementById('tilt');
+const speedValue=document.getElementById('speedValue');
+const radiusValue=document.getElementById('radiusValue');
+const eccValue=document.getElementById('eccValue');
+const galSpeedValue=document.getElementById('galSpeedValue');
+const tiltValue=document.getElementById('tiltValue');
+const pauseBtn=document.getElementById('pauseBtn');
+const trailBtn=document.getElementById('trailBtn');
+const labelBtn=document.getElementById('labelBtn');
+const resetBtn=document.getElementById('resetBtn');
+const modeSolarBtn=document.getElementById('modeSolar');
+const modeGalacticBtn=document.getElementById('modeGalactic');
+const galacticControls=document.getElementById('galacticControls');
+const radiusRow=document.getElementById('radiusRow');
+const eccRow=document.getElementById('eccRow');
+const dayLabel=document.getElementById('dayLabel');
+const distanceLabel=document.getElementById('distanceLabel');
+const angleLabel=document.getElementById('angleLabel');
+const hudTitle=document.getElementById('hudTitle');
+const infoText=document.getElementById('infoText');
+const legend=document.getElementById('legend');
+
+let mode='solar';
+let followSun=true;
+let sizeMode='schematic';
+let simDays=0,theta=0,paused=false,showTrail=true,showLabels=true,lastTime=performance.now();
+let zoom=1,panX=0,panY=0,isDragging=false,lastPointer={x:0,y:0};
+const zoomInput=document.getElementById('zoom');
+const zoomValue=document.getElementById('zoomValue');
+const zoomInBtn=document.getElementById('zoomInBtn');
+const zoomOutBtn=document.getElementById('zoomOutBtn');
+const zoomResetBtn=document.getElementById('zoomResetBtn');
+
+function setZoom(z){
+zoom=Math.min(6,Math.max(0.2,z));
+zoomInput.value=zoom.toFixed(2);
+zoomValue.textContent=`${zoom.toFixed(2)}x`;
+}
+zoomInput.addEventListener('input',()=>setZoom(Number(zoomInput.value)));
+zoomInBtn.addEventListener('click',()=>setZoom(zoom+0.2));
+zoomOutBtn.addEventListener('click',()=>setZoom(zoom-0.2));
+zoomResetBtn.addEventListener('click',()=>{setZoom(1);panX=0;panY=0;});
+
+canvas.addEventListener('wheel',(e)=>{
+e.preventDefault();
+const delta=e.deltaY>0?-0.15:0.15;
+setZoom(zoom+delta*zoom);
+},{passive:false});
+
+canvas.addEventListener('mousedown',(e)=>{
+isDragging=true;
+canvas.classList.add('dragging');
+lastPointer={x:e.clientX,y:e.clientY};
+});
+window.addEventListener('mousemove',(e)=>{
+if(!isDragging)return;
+const scaleX=canvas.width/canvas.getBoundingClientRect().width;
+const scaleY=canvas.height/canvas.getBoundingClientRect().height;
+const dx=(e.clientX-lastPointer.x)*scaleX;
+const dy=(e.clientY-lastPointer.y)*scaleY;
+panX+=dx;
+panY+=dy;
+lastPointer={x:e.clientX,y:e.clientY};
+});
+window.addEventListener('mouseup',()=>{
+isDragging=false;
+canvas.classList.remove('dragging');
+});
+
+canvas.addEventListener('touchstart',(e)=>{
+if(e.touches.length===1){
+isDragging=true;
+lastPointer={x:e.touches[0].clientX,y:e.touches[0].clientY};
+}
+},{passive:true});
+canvas.addEventListener('touchmove',(e)=>{
+if(!isDragging||e.touches.length!==1)return;
+const scaleX=canvas.width/canvas.getBoundingClientRect().width;
+const scaleY=canvas.height/canvas.getBoundingClientRect().height;
+const dx=(e.touches[0].clientX-lastPointer.x)*scaleX;
+const dy=(e.touches[0].clientY-lastPointer.y)*scaleY;
+panX+=dx;
+panY+=dy;
+lastPointer={x:e.touches[0].clientX,y:e.touches[0].clientY};
+},{passive:true});
+canvas.addEventListener('touchend',()=>{isDragging=false;});
+
+let trail=[],moonTrail=[];
+let galX=0;
+let sunTrail=[];
+
+const planets=[
+{name:'Mercury',color:'#b7bcc6',orbitAU:0.39,periodDays:88.0,radius:5,realRadius:3.5,ecc:0.206},
+{name:'Venus',color:'#d9bc7c',orbitAU:0.72,periodDays:224.7,radius:7,realRadius:8.6,ecc:0.007},
+{name:'Earth',color:'#6cbcff',orbitAU:1.00,periodDays:365.2,radius:9,realRadius:9,ecc:0.017},
+{name:'Mars',color:'#d98463',orbitAU:1.52,periodDays:687.0,radius:7,realRadius:4.8,ecc:0.093},
+{name:'Jupiter',color:'#d7b08b',orbitAU:2.40,periodDays:4331,radius:14,realRadius:34,ecc:0.049},
+{name:'Saturn',color:'#e5d08f',orbitAU:3.10,periodDays:10747,radius:12,realRadius:28,ecc:0.057}
+];
+const moon={name:'Moon',color:'#f1f3f5',orbitRadiusPx:18,periodDays:27.3,radius:3.5,realRadius:2.5};
+const sunRealRadius=60,sunSchematicRadius=24,sunRealRadiusGal=42;
+
+let planetTrails={};
+let solarPlanetTrails={};
+planets.forEach(p=>{planetTrails[p.name]=[];solarPlanetTrails[p.name]=[];});
+
+function fmt(n,d=2){return Number(n).toFixed(d);}
+
+function syncLabels(){
+speedValue.textContent=`${fmt(speedInput.value,1)}x`;
+radiusValue.textContent=`${fmt(radiusInput.value,2)} AU`;
+eccValue.textContent=fmt(eccInput.value,3);
+galSpeedValue.textContent=`${fmt(galSpeedInput.value,1)}x`;
+tiltValue.textContent=`${tiltInput.value}°`;
+}
+syncLabels();
+[speedInput,radiusInput,eccInput,galSpeedInput,tiltInput].forEach(el=>el.addEventListener('input',syncLabels));
+
+function resetTrails(){
+trail=[];moonTrail=[];galX=0;sunTrail=[];
+planets.forEach(p=>{planetTrails[p.name]=[];solarPlanetTrails[p.name]=[];});
+}
+
+pauseBtn.addEventListener('click',()=>{
+paused=!paused;
+pauseBtn.textContent=paused?'Resume':'Pause';
+pauseBtn.classList.toggle('active',paused);
+});
+trailBtn.addEventListener('click',()=>{
+showTrail=!showTrail;
+trailBtn.textContent=showTrail?'Trails ON':'Trails OFF';
+trailBtn.classList.toggle('active',showTrail);
+if(!showTrail)resetTrails();
+});
+labelBtn.addEventListener('click',()=>{
+showLabels=!showLabels;
+labelBtn.textContent=showLabels?'Labels ON':'Labels OFF';
+labelBtn.classList.toggle('active',showLabels);
+});
+resetBtn.addEventListener('click',()=>{
+simDays=0;theta=0;resetTrails();
+});
+
+const cameraBtn=document.getElementById('cameraBtn');
+cameraBtn.addEventListener('click',()=>{
+followSun=!followSun;
+cameraBtn.textContent=followSun?'Camera: Follow Sun':'Camera: Fixed Frame';
+cameraBtn.classList.toggle('active',followSun);
+});
+
+const sizeModeBtn=document.getElementById('sizeModeBtn');
+sizeModeBtn.addEventListener('click',()=>{
+sizeMode=sizeMode==='schematic'?'realistic':'schematic';
+sizeModeBtn.textContent=sizeMode==='schematic'?'Size: Schematic':'Size: Realistic';
+sizeModeBtn.classList.toggle('active',sizeMode==='realistic');
+});
+
+function getRadius(obj){return sizeMode==='realistic'?obj.realRadius:obj.radius;}
+
+function setMode(newMode){
+mode=newMode;
+resetTrails();
+modeSolarBtn.classList.toggle('active',mode==='solar');
+modeGalacticBtn.classList.toggle('active',mode==='galactic');
+galacticControls.style.display=mode==='galactic'?'grid':'none';
+radiusRow.style.display=mode==='solar'?'flex':'none';
+radiusInput.style.display=mode==='solar'?'block':'none';
+eccRow.style.display=mode==='solar'?'flex':'none';
+eccInput.style.display=mode==='solar'?'block':'none';
+hudTitle.textContent=mode==='solar'?'Current Values':'Galactic Journey';
+infoText.textContent=mode==='solar'
+? 'This is a simplified educational model: uniform angular speeds and elliptical shapes approximate real orbits, but proportions are not to true scale.'
+: 'The Sun moves through the Milky Way at roughly 220-240 km/s while bobbing through the galactic plane. Planets spiral around this moving path since their orbital plane is tilted about 60° from the galactic disk.';
+updateLegend();
+}
+modeSolarBtn.addEventListener('click',()=>setMode('solar'));
+modeGalacticBtn.addEventListener('click',()=>setMode('galactic'));
+
+function updateLegend(){
+legend.innerHTML='';
+const items=mode==='solar'
+? [{name:'Sun',color:'#ffcc66'},...planets,moon]
+: [{name:'Sun path',color:'#ffcc66'},...planets,moon];
+items.forEach(it=>{
+const s=document.createElement('span');
+s.innerHTML=`<span class="dot" style="background:${it.color}"></span>${it.name}`;
+legend.appendChild(s);
+});
+}
+updateLegend();
+
+const starLayer=document.createElement('canvas');
+starLayer.width=canvas.width;starLayer.height=canvas.height;
+const sctx=starLayer.getContext('2d');
+sctx.fillStyle='#050710';sctx.fillRect(0,0,starLayer.width,starLayer.height);
+for(let i=0;i<260;i++){
+const x=Math.random()*starLayer.width,y=Math.random()*starLayer.height,r=Math.random()*1.8,a=0.25+Math.random()*0.75;
+sctx.fillStyle=`rgba(255,255,255,${a})`;
+sctx.beginPath();sctx.arc(x,y,r,0,Math.PI*2);sctx.fill();
+}
+
+function orbitPosition(theta,radiusAU,e){
+const a=radiusAU,b=a*Math.sqrt(1-e*e),focusOffset=a*e;
+const x=a*Math.cos(theta)-focusOffset,y=b*Math.sin(theta);
+return{x,y,distance:Math.sqrt(x*x+y*y)};
+}
+
+function drawLabel(text,x,y,color){
+const fontSize=13/zoom;
+ctx.font=`${fontSize}px Inter, sans-serif`;
+const pad=6/zoom,w=ctx.measureText(text).width+pad*2;
+const offX=10/zoom,offY=22/zoom,boxH=20/zoom,r=8/zoom;
+ctx.fillStyle='rgba(6,10,18,0.72)';
+ctx.beginPath();ctx.roundRect(x+offX,y-offY,w,boxH,r);ctx.fill();
+ctx.fillStyle=color;ctx.fillText(text,x+offX+pad,y-(8/zoom));
+}
+
+function hexToRgb(hex){
+const h=hex.replace('#','');
+const bigint=parseInt(h,16);
+return {r:(bigint>>16)&255,g:(bigint>>8)&255,b:bigint&255};
+}
+function shadeColor(hex,factor){
+const {r,g,b}=hexToRgb(hex);
+const nr=Math.round(r*factor),ng=Math.round(g*factor),nb=Math.round(b*factor);
+return `rgb(${Math.min(255,nr)},${Math.min(255,ng)},${Math.min(255,nb)})`;
+}
+function drawShadedSphere(x,y,radius,baseColor,sunX,sunY){
+const dx=sunX-x,dy=sunY-y;
+const dist=Math.sqrt(dx*dx+dy*dy)||1;
+const nx=dx/dist,ny=dy/dist;
+const highlightX=x+nx*radius*0.55;
+const highlightY=y+ny*radius*0.55;
+const grad=ctx.createRadialGradient(
+highlightX,highlightY,radius*0.05,
+x,y,radius*1.35
+);
+grad.addColorStop(0,shadeColor(baseColor,1.55));
+grad.addColorStop(0.45,baseColor);
+grad.addColorStop(1,shadeColor(baseColor,0.28));
+ctx.fillStyle=grad;
+ctx.beginPath();
+ctx.arc(x,y,radius,0,Math.PI*2);
+ctx.fill();
+}
+
+function renderSolar(dt){
+if(!paused){
+const speed=Number(speedInput.value);
+theta+=dt*speed*(Math.PI*2/12);
+simDays+=dt*speed*30.4;
+}
+const earthRadiusAU=Number(radiusInput.value);
+const earthE=Number(eccInput.value);
+const centerX=canvas.width/2,centerY=canvas.height/2,orbitScale=130;
+
+ctx.clearRect(0,0,canvas.width,canvas.height);
+ctx.drawImage(starLayer,0,0);
+ctx.save();
+ctx.translate(canvas.width/2+panX,canvas.height/2+panY);
+ctx.scale(zoom,zoom);
+ctx.translate(centerX-canvas.width/2,centerY-canvas.height/2);
+
+const sunR=sizeMode==='realistic'?36:24;
+const sunGrad=ctx.createRadialGradient(-sunR*0.33,-sunR*0.33,2,0,0,sunR*1.1);
+sunGrad.addColorStop(0,'#fff6d8');
+sunGrad.addColorStop(0.55,'#ffdd88');
+sunGrad.addColorStop(1,'#ffb347');
+ctx.fillStyle=sunGrad;
+ctx.beginPath();ctx.arc(0,0,sunR,0,Math.PI*2);ctx.fill();
+
+const positions=[];
+planets.forEach((planet,index)=>{
+const orbitAU=planet.name==='Earth'?earthRadiusAU:planet.orbitAU;
+const e=planet.name==='Earth'?earthE:planet.ecc;
+const angle=theta*(365.2/planet.periodDays)+index*0.7;
+const a=orbitAU*orbitScale,b=a*Math.sqrt(1-e*e),focusOffset=a*e;
+
+ctx.strokeStyle=planet.color+'40';ctx.lineWidth=1.4/zoom;
+ctx.beginPath();ctx.ellipse(focusOffset,0,a,b,0,0,Math.PI*2);ctx.stroke();
+
+const pos=orbitPosition(angle,orbitAU,e);
+const px=pos.x*orbitScale,py=pos.y*orbitScale;
+positions.push({...planet,x:px,y:py,angle,distance:pos.distance});
+});
+
+const earth=positions.find(p=>p.name==='Earth');
+const moonAngle=theta*(365.2/moon.periodDays)*1.15;
+const moonX=earth.x+Math.cos(moonAngle)*moon.orbitRadiusPx;
+const moonY=earth.y+Math.sin(moonAngle)*moon.orbitRadiusPx;
+
+if(showTrail){
+positions.forEach(planet=>{
+solarPlanetTrails[planet.name].push({x:planet.x,y:planet.y});
+if(solarPlanetTrails[planet.name].length>800)solarPlanetTrails[planet.name].shift();
+});
+moonTrail.push({x:moonX,y:moonY});
+if(moonTrail.length>800)moonTrail.shift();
+
+planets.forEach(planet=>{
+const trailArr=solarPlanetTrails[planet.name];
+ctx.strokeStyle=planet.color+'55';ctx.lineWidth=1.6/zoom;
+ctx.beginPath();trailArr.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));ctx.stroke();
+});
+
+ctx.strokeStyle='rgba(241,243,245,0.25)';ctx.lineWidth=1.1/zoom;
+ctx.beginPath();moonTrail.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));ctx.stroke();
+}
+
+positions.forEach(planet=>{
+const r=getRadius(planet);
+drawShadedSphere(planet.x,planet.y,r,planet.color,0,0);
+if(planet.name==='Saturn'){
+ctx.strokeStyle='rgba(240,220,170,0.9)';ctx.lineWidth=1.4/zoom;
+ctx.beginPath();ctx.ellipse(planet.x,planet.y,r+7,r-2,0.4,0,Math.PI*2);ctx.stroke();
+}
+if(showLabels)drawLabel(planet.name,planet.x,planet.y,planet.color);
+});
+
+ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=1/zoom;
+ctx.beginPath();ctx.arc(earth.x,earth.y,moon.orbitRadiusPx,0,Math.PI*2);ctx.stroke();
+drawShadedSphere(moonX,moonY,getRadius(moon),moon.color,0,0);
+if(showLabels)drawLabel(moon.name,moonX,moonY,moon.color);
+
+ctx.restore();
+
+dayLabel.textContent=`Elapsed days: ${fmt(simDays,1)}`;
+distanceLabel.textContent=`Earth-Sun distance: ${fmt(earth.distance,3)} AU`;
+angleLabel.textContent=`Earth orbital angle: ${fmt((earth.angle*180/Math.PI)%360,1)}°`;
+}
+
+function renderGalactic(dt){
+if(!paused){
+const speed=Number(speedInput.value);
+const galSpeed=Number(galSpeedInput.value);
+theta+=dt*speed*(Math.PI*2/12);
+simDays+=dt*speed*30.4;
+galX+=dt*speed*galSpeed*22;
+}
+
+const tiltDeg=Number(tiltInput.value);
+const tiltRad=tiltDeg*Math.PI/180;
+const centerY=canvas.height/2;
+const scrollX=canvas.width*0.5;
+const camOffset=followSun?galX:0;
+
+function toScreenX(gx){return scrollX+(gx-camOffset);}
+
+ctx.clearRect(0,0,canvas.width,canvas.height);
+ctx.drawImage(starLayer,0,0);
+
+ctx.save();
+ctx.translate(canvas.width/2+panX,canvas.height/2+panY);
+ctx.scale(zoom,zoom);
+ctx.translate(-canvas.width/2,-canvas.height/2);
+
+ctx.strokeStyle='rgba(120,150,220,0.18)';
+ctx.lineWidth=2/zoom;
+ctx.beginPath();
+ctx.moveTo(-canvas.width*3,centerY);
+ctx.lineTo(canvas.width*4,centerY);
+ctx.stroke();
+ctx.fillStyle='rgba(150,170,230,0.55)';
+ctx.font=`${13/zoom}px Inter, sans-serif`;
+ctx.fillText('Galactic plane',12/zoom,centerY-(10/zoom));
+
+const bobAmplitude=70;
+const bobPeriod=900;
+const sunY=centerY+Math.sin(galX/bobPeriod)*bobAmplitude;
+const sunScreenX=toScreenX(galX);
+
+if(showTrail){
+sunTrail.push({gx:galX,gy:sunY});
+if(sunTrail.length>2000)sunTrail.shift();
+}
+
+if(showTrail){
+ctx.strokeStyle='rgba(255,204,102,0.55)';
+ctx.lineWidth=2.5/zoom;
+ctx.beginPath();
+sunTrail.forEach((p,i)=>{
+const sx=toScreenX(p.gx);
+if(i===0)ctx.moveTo(sx,p.gy);else ctx.lineTo(sx,p.gy);
+});
+ctx.stroke();
+}
+
+const orbitScale=32;
+const planetPositions=[];
+planets.forEach((planet,index)=>{
+const angle=theta*(365.2/planet.periodDays)+index*0.7;
+const pos=orbitPosition(angle,planet.orbitAU,planet.ecc);
+const localX=pos.x*orbitScale;
+const localY=pos.y*orbitScale;
+const z=localY*Math.sin(tiltRad);
+const projX=localX;
+const projY=localY*Math.cos(tiltRad);
+const screenX=sunScreenX+projX;
+const screenY=sunY+projY-z*0.3;
+planetPositions.push({...planet,screenX,screenY,angle,z});
+
+if(showTrail){
+planetTrails[planet.name].push({gx:galX+projX,gy:sunY+projY-z*0.3});
+if(planetTrails[planet.name].length>1500)planetTrails[planet.name].shift();
+}
+});
+
+const earthGalPos=planetPositions.find(p=>p.name==='Earth');
+const moonAngleGal=theta*(365.2/moon.periodDays)*1.15;
+const moonLocalX=Math.cos(moonAngleGal)*8;
+const moonLocalY=Math.sin(moonAngleGal)*8;
+const moonZ=earthGalPos.z+moonLocalY*Math.sin(tiltRad);
+const moonScreenX=earthGalPos.screenX+moonLocalX;
+const moonScreenY=earthGalPos.screenY+moonLocalY*Math.cos(tiltRad);
+
+if(showTrail){
+moonTrail.push({gx:galX+(earthGalPos.screenX-sunScreenX)+moonLocalX,gy:earthGalPos.screenY+moonLocalY*Math.cos(tiltRad)});
+if(moonTrail.length>1500)moonTrail.shift();
+}
+
+if(showTrail){
+planets.forEach(planet=>{
+const trailArr=planetTrails[planet.name];
+ctx.strokeStyle=planet.color+'55';
+ctx.lineWidth=1.3/zoom;
+ctx.beginPath();
+trailArr.forEach((p,i)=>{
+const sx=toScreenX(p.gx);
+const sy=p.gy;
+if(i===0)ctx.moveTo(sx,sy);else ctx.lineTo(sx,sy);
+});
+ctx.stroke();
+});
+
+ctx.strokeStyle=moon.color+'70';
+ctx.lineWidth=1.1/zoom;
+ctx.beginPath();
+moonTrail.forEach((p,i)=>{
+const sx=toScreenX(p.gx);
+const sy=p.gy;
+if(i===0)ctx.moveTo(sx,sy);else ctx.lineTo(sx,sy);
+});
+ctx.stroke();
+}
+
+const drawables=[
+{kind:'sun',z:0,screenX:sunScreenX,screenY:sunY},
+...planetPositions.map(p=>({kind:'planet',data:p,z:p.z,screenX:p.screenX,screenY:p.screenY})),
+{kind:'moon',z:moonZ,screenX:moonScreenX,screenY:moonScreenY}
+];
+
+drawables.sort((a,b)=>a.z-b.z);
+
+const depthRange=orbitScale*3.2*Math.max(0.05,Math.sin(tiltRad));
+
+drawables.forEach(d=>{
+const depthFactor=1-Math.min(0.35,Math.max(0,(d.z+depthRange)/(depthRange*2))*0.35);
+if(d.kind==='sun'){
+const sunR=(sizeMode==='realistic'?sunRealRadiusGal:14);
+const sunGrad=ctx.createRadialGradient(sunScreenX-sunR*0.4,sunY-sunR*0.4,2,sunScreenX,sunY,sunR*1.15);
+sunGrad.addColorStop(0,'#fff6d8');
+sunGrad.addColorStop(0.55,'#ffdd88');
+sunGrad.addColorStop(1,'#ffb347');
+ctx.fillStyle=sunGrad;
+ctx.beginPath();ctx.arc(sunScreenX,sunY,sunR,0,Math.PI*2);ctx.fill();
+if(showLabels)drawLabel('Sun',sunScreenX,sunY,'#ffcc66');
+}else if(d.kind==='planet'){
+const p=d.data;
+const baseR=Math.max(3,getRadius(p)*(sizeMode==='realistic'?0.42:0.6));
+const r=baseR*depthFactor;
+drawShadedSphere(p.screenX,p.screenY,r,p.color,sunScreenX,sunY);
+if(showLabels)drawLabel(p.name,p.screenX,p.screenY,p.color);
+}else{
+const baseR=Math.max(1.6,getRadius(moon)*(sizeMode==='realistic'?0.42:0.63));
+const r=baseR*depthFactor;
+drawShadedSphere(moonScreenX,moonScreenY,r,moon.color,sunScreenX,sunY);
+if(showLabels)drawLabel(moon.name,moonScreenX,moonScreenY,moon.color);
+}
+});
+
+ctx.restore();
+
+const galSpeed=Number(galSpeedInput.value);
+dayLabel.textContent=`Elapsed days: ${fmt(simDays,1)}`;
+distanceLabel.textContent=`Galactic drift speed: ${fmt(galSpeed,1)}x (~220-240 km/s in reality)`;
+angleLabel.textContent=`Ecliptic tilt vs galactic plane: ${tiltDeg}°`;
+}
+
+function render(now){
+const dt=(now-lastTime)/1000;
+lastTime=now;
+if(mode==='solar')renderSolar(dt);
+else renderGalactic(dt);
+requestAnimationFrame(render);
+}
+
+requestAnimationFrame((t)=>{lastTime=t;render(t);});
+</script>
+</body>
+</html>

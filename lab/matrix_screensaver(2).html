@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Matrix-Style Screensaver — Tsumugi Demo</title>
+  <style>
+    html,body{height:100%;margin:0;background:#000;overflow:hidden;font-family: monospace}
+    canvas{display:block}
+    .ui{
+      position:fixed;right:12px;top:12px;background:rgba(0,0,0,0.45);backdrop-filter: blur(6px);color:#b7f59b;border:1px solid rgba(183,245,155,0.18);padding:10px;border-radius:10px;font-size:13px;z-index:999;transition:all 0.3s ease;max-width:180px
+    }
+    .ui.hidden{opacity:0.2;transform:scale(0.9)}
+    .ui label{display:block;margin:6px 0}
+    .ui input[type=range]{width:140px}
+    .hint{font-size:12px;opacity:0.8;color:#9fdc8c}
+    .title{font-weight:700;margin-bottom:6px}
+    .footer{font-size:11px;color:#7fb975;margin-top:8px}
+    .btn{appearance:none;background:transparent;border:1px solid rgba(127,185,117,0.18);color:#b7f59b;padding:6px 8px;border-radius:8px;cursor:pointer;margin-right:6px}
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <div class="ui" id="ui">
+    <div class="title">Matrix Simulation</div>
+    <label>Speed <span id="speedVal">50</span>
+      <input id="speed" type="range" min="10" max="200" value="50">
+    </label>
+    <label>Density (columns) <span id="densityVal">80</span>
+      <input id="density" type="range" min="10" max="220" value="80">
+    </label>
+    <label>Font size <span id="sizeVal">18</span>
+      <input id="size" type="range" min="8" max="36" value="18">
+    </label>
+    <label><input id="mirror" type="checkbox"> Mirror (flip horizontally)</label>
+    <div style="margin-top:8px">
+      <button class="btn" id="pause">Pause</button>
+      <button class="btn" id="reset">Reset</button>
+    </div>
+    <div class="footer">Click to pause/resume • Auto-resizes</div>
+  </div>
+
+  <script>
+    const KATAKANA = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンヴガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポャュョィェォー';
+    const HIRAGANA = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん';
+    const NUMBERS = '0123456789';
+    const SYMBOLS = '@#$%&*+?<>[]{}';
+    const ENGLISH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+    const FRENCH = 'ÀÂÆÇÉÈÊËÎÏÔŒÙÛÜŸàâæçéèêëîïôœùûüÿ';
+
+    const CHARSET = KATAKANA + HIRAGANA + NUMBERS + SYMBOLS + ENGLISH + FRENCH;
+
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+
+    let width = canvas.width = innerWidth;
+    let height = canvas.height = innerHeight;
+
+    const speedEl = document.getElementById('speed');
+    const densityEl = document.getElementById('density');
+    const sizeEl = document.getElementById('size');
+    const mirrorEl = document.getElementById('mirror');
+    const pauseBtn = document.getElementById('pause');
+    const resetBtn = document.getElementById('reset');
+
+    const speedVal = document.getElementById('speedVal');
+    const densityVal = document.getElementById('densityVal');
+    const sizeVal = document.getElementById('sizeVal');
+
+    let fontSize = parseInt(sizeEl.value,10);
+    let speed = parseInt(speedEl.value,10) / 50;
+    let drops = [];
+
+    function initDrops(){
+      const columns = Math.max(10, Math.floor(width / fontSize));
+      drops = new Array(columns).fill(0).map(()=> Math.floor(Math.random()*height));
+    }
+
+    function resize(){
+      width = canvas.width = innerWidth;
+      height = canvas.height = innerHeight;
+      ctx.setTransform(1,0,0,1,0,0);
+      if(mirrorEl.checked){
+        ctx.translate(width,0);
+        ctx.scale(-1,1);
+      }
+      initDrops();
+    }
+
+    let then = 0;
+    let paused = false;
+
+    function draw(now){
+      if(paused){ requestAnimationFrame(draw); return; }
+      const delta = now - then;
+      if(delta < (1000/60)){
+        requestAnimationFrame(draw); return;
+      }
+      then = now;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.05)';
+      ctx.fillRect(0,0,width,height);
+
+      ctx.font = fontSize + 'px monospace';
+      for(let i=0;i<drops.length;i++){
+        const x = i * fontSize;
+        const y = drops[i] * fontSize;
+        const text = CHARSET.charAt(Math.floor(Math.random()*CHARSET.length));
+
+        ctx.fillStyle = '#fff';
+        ctx.fillText(text, x, y);
+
+        ctx.fillStyle = 'rgba(190,255,190,1)';
+        ctx.fillText(text, x, y - fontSize);
+
+        ctx.fillStyle = 'rgba(120,220,120,0.6)';
+        ctx.fillText(text, x, y - fontSize*2);
+
+        drops[i] += Math.random()*speed + 0.5;
+
+        if(drops[i] * fontSize > height && Math.random() > 0.975){
+          drops[i] = 0;
+        }
+      }
+
+      requestAnimationFrame(draw);
+    }
+
+    speedEl.addEventListener('input', ()=>{
+      speed = parseInt(speedEl.value,10) / 50;
+      speedVal.textContent = speedEl.value;
+    });
+    densityEl.addEventListener('input', ()=>{
+      densityVal.textContent = densityEl.value;
+      initDrops();
+    });
+    sizeEl.addEventListener('input', ()=>{
+      fontSize = parseInt(sizeEl.value,10);
+      sizeVal.textContent = sizeEl.value;
+      initDrops();
+    });
+
+    mirrorEl.addEventListener('change', ()=>{
+      ctx.setTransform(1,0,0,1,0,0);
+      if(mirrorEl.checked){
+        ctx.translate(width,0);
+        ctx.scale(-1,1);
+      }
+    });
+
+    pauseBtn.addEventListener('click', ()=>{
+      paused = !paused;
+      pauseBtn.textContent = paused ? 'Resume' : 'Pause';
+    });
+
+    resetBtn.addEventListener('click', ()=>{
+      ctx.setTransform(1,0,0,1,0,0);
+      if(mirrorEl.checked){ ctx.translate(width,0); ctx.scale(-1,1); }
+      initDrops();
+      ctx.clearRect(0,0,width,height);
+    });
+
+    canvas.addEventListener('click', ()=>{ paused = !paused; pauseBtn.textContent = paused ? 'Resume' : 'Pause'; });
+    addEventListener('resize', resize);
+
+    document.getElementById('ui').addEventListener('mouseenter', ()=>{
+      document.getElementById('ui').classList.remove('hidden');
+    });
+    document.getElementById('ui').addEventListener('mouseleave', ()=>{
+      document.getElementById('ui').classList.add('hidden');
+    });
+
+    resize();
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0,0,width,height);
+    requestAnimationFrame(draw);
+  </script>
+</body>
+</html>

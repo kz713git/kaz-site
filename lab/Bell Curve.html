@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0; background:#1a1a1a; color:#eee; font-family:sans-serif; display:flex; flex-direction:column; align-items:center;">
+<div style="padding:10px; display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; font-size:12px;">
+    <label>重力: <input type="range" id="gravity" min="0.01" max="0.5" step="0.01" value="0.2"></label>
+    <label>揺らぎ: <input type="range" id="random" min="0" max="3" step="0.1" value="0.5"></label>
+    <label>摩擦: <input type="range" id="friction" min="0.8" max="0.99" step="0.01" value="0.95"></label>
+    <label>球サイズ: <input type="range" id="ballSize" min="1" max="7" step="0.5" value="4" onchange="resetBoard()"></label>
+</div>
+<canvas id="canvas" width="600" height="800"></canvas>
+<script>
+const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+const pins = [];
+let balls = [];
+const siloWidth = 16;
+const numSilos = 31;
+const siloStartX = (600 - (siloWidth * numSilos)) / 2; 
+let siloCounts = new Array(numSilos).fill(0);
+let totalSpawned = 0;
+
+// パステルカラーのパレット
+const pastelColors = ['#ffb3ba', '#ffdfba', '#ffffba', '#baffc9', '#bae1ff', '#e8baff', '#fcc2ff', '#b3f5ff'];
+
+// ピンの生成
+for (let i = 0; i < 18; i++) {
+    for (let j = 0; j <= i; j++) {
+        pins.push({ x: 300 - (i * 15) + (j * 30), y: 60 + (i * 26) });
+    }
+}
+
+// 盤面リセット
+function resetBoard() {
+    balls = [];
+    siloCounts.fill(0);
+    totalSpawned = 0;
+}
+
+function update() {
+    const g = parseFloat(document.getElementById('gravity').value);
+    const r = parseFloat(document.getElementById('random').value);
+    const f = parseFloat(document.getElementById('friction').value);
+    const radius = parseFloat(document.getElementById('ballSize').value);
+
+    // 球の追加（10個ごとに色を切り替え）
+    if (Math.random() < 0.25) {
+        let color = pastelColors[Math.floor(totalSpawned / 10) % pastelColors.length];
+        balls.push({ x: 300 + (Math.random()-0.5)*10, y: 10, vx: 0, vy: 0, stopped: false, inSilo: false, r: radius, c: color });
+        totalSpawned++;
+    }
+
+    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0,0,600,800);
+
+    // サイロの壁を描画
+    ctx.strokeStyle = '#333';
+    for(let i=0; i<=numSilos; i++) {
+        let x = siloStartX + i * siloWidth;
+        ctx.beginPath(); ctx.moveTo(x, 560); ctx.lineTo(x, 780); ctx.stroke();
+    }
+
+    // ピンを描画
+    ctx.fillStyle = '#fff';
+    pins.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, 7); ctx.fill(); });
+
+    // 球の物理演算と描画
+    for (let i = balls.length - 1; i >= 0; i--) {
+        let b = balls[i];
+        if (!b.stopped) {
+            if (!b.inSilo) {
+                b.vy += g; b.vx *= f;
+                b.x += b.vx + (Math.random()-0.5)*r;
+                b.y += b.vy;
+
+                // ピンとの衝突
+                pins.forEach(p => {
+                    let dx = b.x - p.x, dy = b.y - p.y;
+                    if (Math.hypot(dx, dy) < b.r + 2) {
+                        b.vx = (dx / (b.r + 2)) * 2;
+                        b.vy = -Math.abs(b.vy) * 0.4;
+                    }
+                });
+
+                // サイロへの進入判定
+                if (b.y > 560) {
+                    b.inSilo = true;
+                    let col = Math.floor((b.x - siloStartX) / siloWidth);
+                    col = Math.max(0, Math.min(numSilos - 1, col));
+                    
+                    siloCounts[col]++;
+                    b.targetX = siloStartX + col * siloWidth + siloWidth / 2;
+                    b.targetY = 780 - (siloCounts[col] * (b.r * 2));
+
+                    if (b.targetY <= 560) {
+                        resetBoard();
+                        break; 
+                    }
+                }
+            } else {
+                b.x += (b.targetX - b.x) * 0.3; 
+                b.vy += g;
+                b.y += b.vy;
+
+                if (b.y >= b.targetY) {
+                    b.y = b.targetY;
+                    b.x = b.targetX;
+                    b.stopped = true;
+                }
+            }
+        }
+        
+        if (balls.length > 0) {
+            ctx.fillStyle = b.c; 
+            ctx.beginPath(); 
+            ctx.arc(b.x, b.y, b.r, 0, 7); 
+            ctx.fill();
+        }
+    }
+    requestAnimationFrame(update);
+}
+update();
+</script>
+</body>
+</html>
