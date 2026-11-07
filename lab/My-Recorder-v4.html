@@ -1,0 +1,705 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Moo0-style Web Voice Recorder v4 - Pro Meter</title>
+  <!-- Lightweight MP3 encoder (lamejs) -->
+  <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 20px;
+      background: #eef1f5;
+      color: #333;
+    }
+    .recorder-card {
+      background: #ffffff;
+      border: 1px solid #c8d1dc;
+      border-radius: 8px;
+      padding: 18px 22px;
+      max-width: 440px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .header-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin: 0 0 16px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #1a2736;
+    }
+    .field-group {
+      border: 1px solid #dcdfe6;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 14px;
+      background: #fafbfc;
+    }
+    .legend {
+      font-size: 12px;
+      font-weight: bold;
+      color: #555;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      width: 100%;
+    }
+    .row:last-child {
+      margin-bottom: 0;
+    }
+    label {
+      font-size: 13px;
+      min-width: 75px;
+      color: #444;
+      flex-shrink: 0;
+    }
+    select, input[type="text"] {
+      font-size: 13px;
+      padding: 5px 8px;
+      border: 1px solid #c4c9d3;
+      border-radius: 4px;
+      background: #fff;
+      min-width: 0;
+    }
+    input[type="text"] {
+      flex: 1;
+    }
+    .select-flex {
+      flex: 1;
+      width: 100%;
+    }
+
+    /* 独立ゲイン調整スライダー */
+    .gain-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .gain-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+    }
+    .gain-name {
+      width: 75px;
+      font-weight: bold;
+      color: #444;
+      flex-shrink: 0;
+    }
+    .gain-slider {
+      flex: 1;
+      height: 5px;
+      cursor: pointer;
+    }
+    .gain-val {
+      width: 45px;
+      text-align: right;
+      font-weight: bold;
+      color: #2b78e4;
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+    }
+
+    /* プロ仕様 120%スケール VUメーター */
+    .meter-container {
+      background: #141922;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      border: 1px solid #252d3a;
+    }
+    .meter-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #7b889b;
+      margin-bottom: 6px;
+      padding-left: 85px; /* ラベル幅と合わせる */
+    }
+    .meter-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .meter-row:last-child {
+      margin-bottom: 0;
+    }
+    .meter-label {
+      font-size: 11px;
+      font-weight: bold;
+      color: #9aa4b2;
+      width: 75px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .meter-bar-track {
+      flex: 1;
+      height: 12px;
+      background: #090c10;
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid #2d3544;
+      position: relative;
+    }
+
+    /* 固定グラデーション背景 (0〜120%) */
+    .meter-bar-gradient {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      /* 83.33%が100%限界点。そこまでが緑〜黄、そこから右(120%まで)が赤 */
+      background: linear-gradient(
+        to right,
+        #238636 0%,
+        #2ea043 55%,
+        #d29922 75%,
+        #e3b341 83.33%,
+        #ff3b30 83.34%,
+        #ff0000 100%
+      );
+      /* clip-path で右側をマスクして、音量レベル分だけ露出 */
+      clip-path: inset(0 100% 0 0);
+      transition: clip-path 0.04s ease-out;
+    }
+
+    /* 100%限界線の赤ライン (83.333%位置) */
+    .meter-limit-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 83.333%;
+      width: 2px;
+      background: #ff3b30;
+      z-index: 3;
+      box-shadow: 0 0 4px rgba(255, 59, 48, 0.9);
+    }
+
+    .status-box {
+      text-align: center;
+      padding: 8px;
+      font-size: 13px;
+      font-weight: bold;
+      color: #2b5c8f;
+      background: #e8f0fe;
+      border-radius: 4px;
+      margin-bottom: 14px;
+      min-height: 20px;
+    }
+    .btn-record {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+      background: #2b78e4;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+    .btn-record:hover {
+      background: #1b63cc;
+    }
+    .btn-record.recording {
+      background: #d93025;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.8; }
+      100% { opacity: 1; }
+    }
+    .preview-box {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed #dcdfe6;
+    }
+    audio {
+      width: 100%;
+      height: 36px;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="recorder-card">
+  <div class="header-title">
+    <span>🎙</span> Web Voice Recorder v4
+  </div>
+
+  <!-- 出力設定 -->
+  <div class="field-group">
+    <div class="legend">Output File Settings</div>
+    <div class="row">
+      <label for="fileName">File Name:</label>
+      <input type="text" id="fileName" value="Voice">
+      <select id="formatSelect" style="width: 140px; flex-shrink: 0;">
+        <option value="mp3" selected>MP3 (Compact)</option>
+        <option value="wav">WAV (Raw PCM)</option>
+      </select>
+    </div>
+    <div class="row">
+      <label for="qualitySelect">Quality:</label>
+      <select id="qualitySelect" class="select-flex">
+        <option value="ultra_low">Ultra-Low: 16kHz / 32kbps (~240KB/m)</option>
+        <option value="low" selected>Low: 16kHz / 64kbps (~480KB/m)</option>
+        <option value="normal">Standard: 44.1kHz / 128kbps (~960KB/m)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 音源 & 独立ゲイン調整 (最大600%まで拡張) -->
+  <div class="field-group">
+    <div class="legend">Source & Volume Balance (Live Adjustable)</div>
+    <div class="row" style="margin-bottom: 12px;">
+      <label for="sourceSelect">Source:</label>
+      <select id="sourceSelect" class="select-flex">
+        <option value="both" selected>Both (PC & Mic)</option>
+        <option value="system">Only PC Sound</option>
+        <option value="mic">Only Voice (Mic)</option>
+      </select>
+    </div>
+    
+    <div class="gain-group">
+      <div class="gain-item">
+        <span class="gain-name">🎤 Mic Gain:</span>
+        <input type="range" id="micGainSlider" class="gain-slider" min="0" max="600" step="5" value="100">
+        <span id="micGainVal" class="gain-val">100%</span>
+      </div>
+      <div class="gain-item">
+        <span class="gain-name">💻 PC Gain:</span>
+        <input type="range" id="sysGainSlider" class="gain-slider" min="0" max="600" step="5" value="100">
+        <span id="sysGainVal" class="gain-val">100%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- プロ仕様 120%スケール VUメーター -->
+  <div class="meter-container">
+    <div class="meter-header">
+      <span>0%</span>
+      <span>50%</span>
+      <span style="color: #ff6b6b; font-weight: bold; margin-left: 28px;">100% (LIMIT)</span>
+      <span>120%</span>
+    </div>
+    <div class="meter-row">
+      <div class="meter-label">🎤 Mic Input</div>
+      <div class="meter-bar-track">
+        <div id="micMeterFill" class="meter-bar-gradient"></div>
+        <div class="meter-limit-line"></div>
+      </div>
+    </div>
+    <div class="meter-row">
+      <div class="meter-label">💻 PC Sound</div>
+      <div class="meter-bar-track">
+        <div id="sysMeterFill" class="meter-bar-gradient"></div>
+        <div class="meter-limit-line"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ステータス -->
+  <div id="statusBox" class="status-box">Ready for Recording!</div>
+
+  <!-- 録音ボタン -->
+  <button id="btnRecord" class="btn-record">
+    <span id="btnIcon">▶</span> <span id="btnText">Start Recording!</span>
+  </button>
+
+  <!-- プレビュー再生 -->
+  <div class="preview-box">
+    <label style="font-size:12px; color:#666;">Playback / Recent Recording:</label>
+    <audio id="audioPlayer" controls></audio>
+  </div>
+</div>
+
+<script>
+  let audioContext = null;
+  let micStream = null;
+  let sysStream = null;
+  let processorNode = null;
+  let isRecording = false;
+  let pcmData = [];
+  let recordStartTime = 0;
+  let timerInterval = null;
+
+  let micGainNode = null;
+  let sysGainNode = null;
+  let micAnalyser = null;
+  let sysAnalyser = null;
+  let meterAnimationId = null;
+
+  const btnRecord = document.getElementById('btnRecord');
+  const btnIcon = document.getElementById('btnIcon');
+  const btnText = document.getElementById('btnText');
+  const sourceSelect = document.getElementById('sourceSelect');
+  const formatSelect = document.getElementById('formatSelect');
+  const qualitySelect = document.getElementById('qualitySelect');
+  const fileNameInput = document.getElementById('fileName');
+  const statusBox = document.getElementById('statusBox');
+  const audioPlayer = document.getElementById('audioPlayer');
+  const micMeterFill = document.getElementById('micMeterFill');
+  const sysMeterFill = document.getElementById('sysMeterFill');
+
+  const micGainSlider = document.getElementById('micGainSlider');
+  const sysGainSlider = document.getElementById('sysGainSlider');
+  const micGainVal = document.getElementById('micGainVal');
+  const sysGainVal = document.getElementById('sysGainVal');
+
+  const QUALITY_PROFILES = {
+    ultra_low: { sampleRate: 16000, mp3Bitrate: 32 },
+    low:       { sampleRate: 16000, mp3Bitrate: 64 },
+    normal:    { sampleRate: 44100, mp3Bitrate: 128 }
+  };
+
+  micGainSlider.addEventListener('input', (e) => {
+    const val = e.target.value;
+    micGainVal.textContent = `${val}%`;
+    if (micGainNode && audioContext) {
+      micGainNode.gain.setValueAtTime(val / 100, audioContext.currentTime);
+    }
+  });
+
+  sysGainSlider.addEventListener('input', (e) => {
+    const val = e.target.value;
+    sysGainVal.textContent = `${val}%`;
+    if (sysGainNode && audioContext) {
+      sysGainNode.gain.setValueAtTime(val / 100, audioContext.currentTime);
+    }
+  });
+
+  btnRecord.addEventListener('click', async () => {
+    if (!isRecording) {
+      await startRecording();
+    } else {
+      stopRecording();
+    }
+  });
+
+  async function startRecording() {
+    pcmData = [];
+    const mode = sourceSelect.value;
+    const profile = QUALITY_PROFILES[qualitySelect.value];
+
+    statusBox.textContent = 'Awaiting device permissions...';
+
+    try {
+      if (mode === 'mic' || mode === 'both') {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        });
+      }
+
+      if (mode === 'system' || mode === 'both') {
+        statusBox.textContent = 'Select tab/screen to share (Check "Share audio")';
+        sysStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: true
+        });
+        sysStream.getVideoTracks().forEach(track => track.stop());
+
+        if (sysStream.getAudioTracks().length === 0) {
+          throw new Error('System audio was not selected. Please ensure "Share audio" is checked.');
+        }
+      }
+
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const destination = audioContext.createMediaStreamDestination();
+
+      // --- マイク配管: Source -> Gain -> Analyser -> Destination ---
+      if (micStream) {
+        const micSource = audioContext.createMediaStreamSource(micStream);
+        micGainNode = audioContext.createGain();
+        micGainNode.gain.value = parseFloat(micGainSlider.value) / 100;
+
+        micAnalyser = audioContext.createAnalyser();
+        micAnalyser.fftSize = 512;
+
+        micSource.connect(micGainNode);
+        micGainNode.connect(micAnalyser);
+        micGainNode.connect(destination);
+      }
+
+      // --- PC音配管: Source -> Gain -> Analyser -> Destination ---
+      if (sysStream) {
+        const sysSource = audioContext.createMediaStreamSource(sysStream);
+        sysGainNode = audioContext.createGain();
+        sysGainNode.gain.value = parseFloat(sysGainSlider.value) / 100;
+
+        sysAnalyser = audioContext.createAnalyser();
+        sysAnalyser.fftSize = 512;
+
+        sysSource.connect(sysGainNode);
+        sysGainNode.connect(sysAnalyser);
+        sysGainNode.connect(destination);
+      }
+
+      // --- PCM 録音プロセッサ ---
+      const mixedSource = audioContext.createMediaStreamSource(destination.stream);
+      const bufferSize = 4096;
+      processorNode = audioContext.createScriptProcessor(bufferSize, 1, 1);
+      const sampleRateRatio = audioContext.sampleRate / profile.sampleRate;
+
+      processorNode.onaudioprocess = (e) => {
+        if (!isRecording) return;
+        const inputBuffer = e.inputBuffer.getChannelData(0);
+
+        const downLength = Math.floor(inputBuffer.length / sampleRateRatio);
+        const downBuffer = new Float32Array(downLength);
+        for (let i = 0; i < downLength; i++) {
+          downBuffer[i] = inputBuffer[Math.floor(i * sampleRateRatio)];
+        }
+        pcmData.push(downBuffer);
+      };
+
+      mixedSource.connect(processorNode);
+      processorNode.connect(audioContext.destination);
+
+      isRecording = true;
+      btnRecord.classList.add('recording');
+      btnIcon.textContent = '■';
+      btnText.textContent = 'Stop Recording';
+      toggleFixedInputs(true);
+
+      recordStartTime = Date.now();
+      timerInterval = setInterval(updateTimer, 500);
+
+      drawMeters();
+
+    } catch (err) {
+      console.error(err);
+      alert('Initialization Error: ' + err.message);
+      cleanupStreams();
+      statusBox.textContent = 'Ready for Recording!';
+    }
+  }
+
+  // --- 高精度ピーク監視メーター描画 ---
+  function drawMeters() {
+    if (!isRecording) {
+      micMeterFill.style.clipPath = 'inset(0 100% 0 0)';
+      sysMeterFill.style.clipPath = 'inset(0 100% 0 0)';
+      return;
+    }
+
+    // 1. マイクのピーク振幅測定
+    if (micAnalyser) {
+      const timeData = new Float32Array(micAnalyser.fftSize);
+      micAnalyser.getFloatTimeDomainData(timeData);
+      const peak = getPeakAmplitude(timeData); // 0.0 〜 1.0+
+      // 1.2(120%)をトラックの右端100%とする計算
+      const percent = Math.min(100, (peak / 1.2) * 100);
+      micMeterFill.style.clipPath = `inset(0 ${100 - percent}% 0 0)`;
+    } else {
+      micMeterFill.style.clipPath = 'inset(0 100% 0 0)';
+    }
+
+    // 2. PC音のピーク振幅測定
+    if (sysAnalyser) {
+      const timeData = new Float32Array(sysAnalyser.fftSize);
+      sysAnalyser.getFloatTimeDomainData(timeData);
+      const peak = getPeakAmplitude(timeData);
+      const percent = Math.min(100, (peak / 1.2) * 100);
+      sysMeterFill.style.clipPath = `inset(0 ${100 - percent}% 0 0)`;
+    } else {
+      sysMeterFill.style.clipPath = 'inset(0 100% 0 0)';
+    }
+
+    meterAnimationId = requestAnimationFrame(drawMeters);
+  }
+
+  // 生波形から瞬間最大ピーク（振幅）を取得
+  function getPeakAmplitude(timeDomainBuffer) {
+    let max = 0;
+    for (let i = 0; i < timeDomainBuffer.length; i++) {
+      const val = Math.abs(timeDomainBuffer[i]);
+      if (val > max) max = val;
+    }
+    return max;
+  }
+
+  function updateTimer() {
+    const elapsedSec = Math.floor((Date.now() - recordStartTime) / 1000);
+    const m = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+    const s = String(elapsedSec % 60).padStart(2, '0');
+    statusBox.textContent = `● Recording [ ${m}:${s} ]`;
+  }
+
+  async function stopRecording() {
+    isRecording = false;
+    clearInterval(timerInterval);
+    if (meterAnimationId) cancelAnimationFrame(meterAnimationId);
+    micMeterFill.style.clipPath = 'inset(0 100% 0 0)';
+    sysMeterFill.style.clipPath = 'inset(0 100% 0 0)';
+
+    btnRecord.classList.remove('recording');
+    btnIcon.textContent = '▶';
+    btnText.textContent = 'Start Recording!';
+    toggleFixedInputs(false);
+    statusBox.textContent = 'Encoding... Please wait';
+
+    if (processorNode) processorNode.disconnect();
+    cleanupStreams();
+    if (audioContext) audioContext.close();
+
+    setTimeout(processOutput, 50);
+  }
+
+  function getLocalTimestamp() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    return `${y}-${m}-${d}_${hh}-${mm}-${ss}`;
+  }
+
+  function processOutput() {
+    const format = formatSelect.value;
+    const profile = QUALITY_PROFILES[qualitySelect.value];
+    let outputBlob = null;
+    let ext = format;
+
+    if (format === 'mp3') {
+      outputBlob = encodeToMP3(pcmData, profile.sampleRate, profile.mp3Bitrate);
+    } else {
+      outputBlob = exportWAV(pcmData, profile.sampleRate);
+    }
+
+    const audioUrl = URL.createObjectURL(outputBlob);
+    audioPlayer.src = audioUrl;
+
+    const sizeKB = (outputBlob.size / 1024).toFixed(1);
+    const baseName = fileNameInput.value.trim() || 'Voice';
+    const timestamp = getLocalTimestamp();
+    const downloadName = `${baseName}_${timestamp}.${ext}`;
+
+    statusBox.textContent = `Saved: ${downloadName} (${sizeKB} KB)`;
+
+    const a = document.createElement('a');
+    a.href = audioUrl;
+    a.download = downloadName;
+    a.click();
+  }
+
+  // --- MP3 Encoder (lamejs) ---
+  function encodeToMP3(buffers, sampleRate, bitrate) {
+    let totalLength = 0;
+    for (const b of buffers) totalLength += b.length;
+
+    const merged = new Float32Array(totalLength);
+    let offset = 0;
+    for (const b of buffers) {
+      merged.set(b, offset);
+      offset += b.length;
+    }
+
+    const samples = new Int16Array(merged.length);
+    for (let i = 0; i < merged.length; i++) {
+      let s = Math.max(-1, Math.min(1, merged[i]));
+      samples[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+
+    const mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, bitrate);
+    const mp3Data = [];
+    const sampleBlockSize = 1152;
+
+    for (let i = 0; i < samples.length; i += sampleBlockSize) {
+      const chunk = samples.subarray(i, i + sampleBlockSize);
+      const mp3buf = mp3encoder.encodeBuffer(chunk);
+      if (mp3buf.length > 0) mp3Data.push(mp3buf);
+    }
+
+    const endBuf = mp3encoder.flush();
+    if (endBuf.length > 0) mp3Data.push(endBuf);
+
+    return new Blob(mp3Data, { type: 'audio/mp3' });
+  }
+
+  // --- WAV Encoder ---
+  function exportWAV(buffers, sampleRate) {
+    let totalLength = 0;
+    for (const b of buffers) totalLength += b.length;
+
+    const merged = new Float32Array(totalLength);
+    let offset = 0;
+    for (const b of buffers) {
+      merged.set(b, offset);
+      offset += b.length;
+    }
+
+    const wavBuffer = new ArrayBuffer(44 + merged.length * 2);
+    const view = new DataView(wavBuffer);
+
+    writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + merged.length * 2, true);
+    writeString(view, 8, 'WAVE');
+    writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(view, 36, 'data');
+    view.setUint32(40, merged.length * 2, true);
+
+    let idx = 44;
+    for (let i = 0; i < merged.length; i++) {
+      let s = Math.max(-1, Math.min(1, merged[i]));
+      view.setInt16(idx, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      idx += 2;
+    }
+    return new Blob([view], { type: 'audio/wav' });
+  }
+
+  function writeString(view, offset, str) {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
+  }
+
+  function cleanupStreams() {
+    if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+    if (sysStream) { sysStream.getTracks().forEach(t => t.stop()); sysStream = null; }
+    micGainNode = null;
+    sysGainNode = null;
+    micAnalyser = null;
+    sysAnalyser = null;
+  }
+
+  function toggleFixedInputs(disabled) {
+    sourceSelect.disabled = disabled;
+    formatSelect.disabled = disabled;
+    qualitySelect.disabled = disabled;
+    fileNameInput.disabled = disabled;
+  }
+</script>
+
+</body>
+</html>
