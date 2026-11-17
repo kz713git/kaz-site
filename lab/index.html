@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="ja">
 <head>
@@ -5,84 +6,687 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Lab — Kazuyuki Igeta</title>
   <style>
+    :root {
+      --bg: #f7f8f5;
+      --surface: #ffffff;
+      --surface-subtle: #f0f2ed;
+      --border: #e2e5dc;
+      --border-hover: #1f5c49;
+      --text-main: #1a1d1a;
+      --text-muted: #60675f;
+      --accent: #1f5c49;
+      --accent-soft: rgba(31, 92, 73, 0.08);
+      --accent-glow: rgba(31, 92, 73, 0.2);
+      --star-active: #d97706;
+      --tag-bg: #eaede6;
+      --radius: 12px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px -2px rgba(31, 92, 73, 0.08);
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      max-width: 780px;
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      padding: 40px 20px 80px;
+    }
+
+    .container {
+      max-width: 960px;
       margin: 0 auto;
-      padding: 72px 24px;
-      background: #f6f7f4;
-      color: #1b1d1b;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-        "Hiragino Sans", "Yu Gothic", sans-serif;
-      line-height: 1.75;
+    }
+
+    /* Header */
+    header {
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .top-nav {
+      margin-bottom: 16px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: transform 0.15s ease;
+    }
+
+    .back-link:hover {
+      transform: translateX(-3px);
+    }
+
+    .header-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 12px;
     }
 
     h1 {
-      font-size: clamp(2rem, 7vw, 4rem);
-      line-height: 1.1;
+      font-size: clamp(2.4rem, 6vw, 3.6rem);
+      font-weight: 700;
       letter-spacing: -0.04em;
+      line-height: 1.05;
+      color: var(--text-main);
     }
 
-    a {
-      color: #1f5c49;
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      margin-top: 6px;
+    }
+
+    .counter {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      background: var(--tag-bg);
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
+
+    /* Controls Bar */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    @media (min-width: 640px) {
+      .controls {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      max-width: 420px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 14px 10px 38px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-main);
+      font-size: 0.95rem;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .search-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .kbd-hint {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .filter-btn.active {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+
+    .view-toggle {
+      display: inline-flex;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 2px;
+    }
+
+    .view-btn {
+      background: transparent;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      transition: all 0.15s ease;
+    }
+
+    .view-btn.active {
+      background: var(--surface);
+      color: var(--accent);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Grid Layout */
+    .lab-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .lab-grid.list-view {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      position: relative;
+      box-shadow: var(--shadow-sm);
+      min-height: 130px;
+    }
+
+    .list-view .card {
+      min-height: auto;
+      flex-direction: row;
+      align-items: center;
+      padding: 12px 18px;
+      gap: 16px;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-hover);
+      box-shadow: var(--shadow-md);
+    }
+
+    .list-view .card:hover {
+      transform: translateX(3px);
+    }
+
+    .card-main {
+      flex: 1;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 6px;
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-main);
+      letter-spacing: -0.01em;
+      line-height: 1.35;
+      padding-right: 28px;
+    }
+
+    .list-view .card-title {
+      font-size: 0.98rem;
+      padding-right: 0;
+      min-width: 280px;
+    }
+
+    .card:hover .card-title {
+      color: var(--accent);
+    }
+
+    .card-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .list-view .card-desc {
+      flex: 1;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 14px;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    .list-view .card-footer {
+      margin-top: 0;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .tag {
+      background: var(--tag-bg);
+      color: var(--text-muted);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+
+    .pin-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--border);
+      padding: 4px;
+      line-height: 1;
+      transition: color 0.15s ease, transform 0.15s ease;
+      z-index: 2;
+    }
+
+    .list-view .pin-btn {
+      position: static;
+      order: -1;
+    }
+
+    .pin-btn:hover {
+      color: var(--star-active);
+      transform: scale(1.15);
+    }
+
+    .pin-btn.pinned {
+      color: var(--star-active);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      grid-column: 1 / -1;
+      font-size: 0.95rem;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 60px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-family: var(--font-mono);
     }
   </style>
 </head>
 <body>
-  <p><a href="/">← Home</a></p>
 
-  <h1>Lab</h1>
+  <div class="container">
+    <header>
+      <div class="top-nav">
+        <a href="/" class="back-link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          Home
+        </a>
+      </div>
+      <div class="header-title-row">
+        <div>
+          <h1>Lab</h1>
+          <p class="subtitle">Small web tools, prototypes, and simulations.</p>
+        </div>
+        <div class="counter" id="itemCount">15 Items</div>
+      </div>
+    </header>
 
-  <p>
-    Small web tools, prototypes, and notes.
-  </p>
+    <div class="controls">
+      <div class="search-box">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="searchInput" class="search-input" placeholder="Search experiments..." autocomplete="off" spellcheck="false">
+        <span class="kbd-hint">/</span>
+      </div>
 
-  <h2>Experiments</h2>
+      <div class="filter-group" id="filterGroup">
+        <button class="filter-btn active" data-category="all">All</button>
+        <button class="filter-btn" data-category="visual">Visual & 3D</button>
+        <button class="filter-btn" data-category="tool">Productivity</button>
+        <button class="filter-btn" data-category="sim">Interactive</button>
+      </div>
 
-  <p>
-    <a href="3d_botanical_fractal_engine.html">3D Botanical Fractal Engine</a>
-  </p>
-  <p>
-    <a href="Bell%20Curve.html">Bell Curve</a>
-  </p>
-  <p>
-    <a href="fluid_timer_tank_goldfish_v3_2_plants.html">Fluid Timer Tank Goldfish — Plants</a>
-  </p>
-  <p>
-    <a href="index-20260919.html">Circle Line Art Animation Engine</a>
-  </p>
-  <p>
-    <a href="matrix_screensaver(2).html">Matrix Screensaver</a>
-  </p>
-  <p>
-    <a href="morse_code_learner_v4.html">Morse Code Learner</a>
-  </p>
-  <p>
-    <a href="Open%20Ocean%20(Copy).html">Ocean Test (copy)</a>
-  </p>
-  <p>
-    <a href="solar-system-depth-v11.html">Solar System Depth</a>
-  </p>
-  <p>
-    <a href="stargate-webgl-cinema-slit-scan.html">Stargate WebGL Cinema Slit Scan</a>
-  </p>
-  <p>
-    <a href="tsumugi_forest_river_webgpu.html">River simulation</a>
-  </p>
-  <p>
-    <a href="My-Recorder-v4.html">Voice Recorder</a>
-  </p>
-    <p>
-    <a href="CONTINUUM.html">CONTINUUM (MEGA DEMO)</a>
-  </p>
-    <p>
-    <a href="Neighbors-Office-v1.html">Neighbors-Office</a>
-  </p>
-    <p>
-    <a href="meeting-agenda-timer-v10.html">Meeting Agenda Timer</a>
-  </p>  
-    <p>
-    <a href="timeslot-dispatcher v2.0.html">Timeslot-Dispatcher</a>
-  </p>  
+      <div class="view-toggle">
+        <button class="view-btn active" id="btnGrid" title="Grid View">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        </button>
+        <button class="view-btn" id="btnList" title="List View">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        </button>
+      </div>
+    </div>
 
+    <main class="lab-grid" id="cardGrid">
+      <!-- Generated via JS for sorting & instant filter -->
+    </main>
+
+    <footer>
+      <span>Kazuyuki Igeta &middot; Personal Lab</span>
+      <span>Pure Vanilla &middot; Zero CDN</span>
+    </footer>
+  </div>
+
+  <script>
+    // Data registry of your prototypes
+    const LAB_DATA = [
+      {
+        id: "botanical-fractal",
+        title: "3D Botanical Fractal Engine",
+        desc: "3D generative plant growth & recursive fractal geometry system.",
+        url: "3d_botanical_fractal_engine.html",
+        category: "visual",
+        tag: "WebGL / 3D"
+      },
+      {
+        id: "bell-curve",
+        title: "Bell Curve",
+        desc: "Interactive statistical Gaussian distribution & variance calculator.",
+        url: "Bell%20Curve.html",
+        category: "tool",
+        tag: "Math / Stats"
+      },
+      {
+        id: "fluid-goldfish",
+        title: "Fluid Timer Tank Goldfish — Plants",
+        desc: "Interactive fluid dynamics tank with simulated aquatic life.",
+        url: "fluid_timer_tank_goldfish_v3_2_plants.html",
+        category: "sim",
+        tag: "Canvas / Phys"
+      },
+      {
+        id: "line-art-engine",
+        title: "Circle Line Art Animation Engine",
+        desc: "Algorithmic harmonic circle & line trajectory pattern generator.",
+        url: "index-20260919.html",
+        category: "visual",
+        tag: "Generative"
+      },
+      {
+        id: "matrix-screensaver",
+        title: "Matrix Screensaver",
+        desc: "Retro terminal digital rain glyph particle simulation.",
+        url: "matrix_screensaver(2).html",
+        category: "visual",
+        tag: "Shader / FX"
+      },
+      {
+        id: "morse-learner",
+        title: "Morse Code Learner",
+        desc: "Auditory & visual interactive Morse code training workstation.",
+        url: "morse_code_learner_v4.html",
+        category: "tool",
+        tag: "Audio / Learn"
+      },
+      {
+        id: "ocean-test",
+        title: "Ocean Test (Copy)",
+        desc: "Surface displacement mesh & open water wave kinematics test.",
+        url: "Open%20Ocean%20(Copy).html",
+        category: "visual",
+        tag: "Simulation"
+      },
+      {
+        id: "solar-system",
+        title: "Solar System Depth",
+        desc: "Celestial orbital mechanics & multi-layer depth perspective view.",
+        url: "solar-system-depth-v11.html",
+        category: "visual",
+        tag: "3D / Canvas"
+      },
+      {
+        id: "stargate-webgl",
+        title: "Stargate WebGL Cinema Slit Scan",
+        desc: "Slit-scan spatial warp visualizer inspired by sci-fi cinema.",
+        url: "stargate-webgl-cinema-slit-scan.html",
+        category: "visual",
+        tag: "WebGL"
+      },
+      {
+        id: "river-sim",
+        title: "River Simulation",
+        desc: "Next-gen WebGPU Eulerian water flow & forest current dynamics.",
+        url: "tsumugi_forest_river_webgpu.html",
+        category: "sim",
+        tag: "WebGPU"
+      },
+      {
+        id: "voice-recorder",
+        title: "Voice Recorder",
+        desc: "In-browser microphone capture, spectrum analyzer & audio wave exporter.",
+        url: "My-Recorder-v4.html",
+        category: "tool",
+        tag: "Audio API"
+      },
+      {
+        id: "continuum-demo",
+        title: "CONTINUUM (MEGA DEMO)",
+        desc: "Comprehensive generative synthesis & state playground showcase.",
+        url: "CONTINUUM.html",
+        category: "sim",
+        tag: "Mega Demo"
+      },
+      {
+        id: "neighbors-office",
+        title: "Neighbors-Office",
+        desc: "Spatial layout simulator for office interaction & proximity dynamics.",
+        url: "Neighbors-Office-v1.html",
+        category: "sim",
+        tag: "Spatial"
+      },
+      {
+        id: "meeting-timer",
+        title: "Meeting Agenda Timer",
+        desc: "Time-discipline engine with auto-pacing per agenda block.",
+        url: "meeting-agenda-timer-v11.html",
+        category: "tool",
+        tag: "Productivity"
+      },
+      {
+        id: "timeslot-dispatcher",
+        title: "Timeslot-Dispatcher",
+        desc: "High-density schedule dispatch & slot assignment coordinator.",
+        url: "timeslot-dispatcher%20v2.0.html",
+        category: "tool",
+        tag: "Scheduler"
+      }
+    ];
+
+    // LocalStorage for Pinned items
+    const PIN_KEY = "kaz_lab_pins_v1";
+    let pinnedIds = new Set(JSON.parse(localStorage.getItem(PIN_KEY) || "[]"));
+
+    let currentCategory = "all";
+    let searchQuery = "";
+    let isListView = false;
+
+    const gridEl = document.getElementById("cardGrid");
+    const searchInput = document.getElementById("searchInput");
+    const itemCountEl = document.getElementById("itemCount");
+    const filterButtons = document.querySelectorAll(".filter-btn");
+    const btnGrid = document.getElementById("btnGrid");
+    const btnList = document.getElementById("btnList");
+
+    function savePins() {
+      localStorage.setItem(PIN_KEY, JSON.stringify([...pinnedIds]));
+    }
+
+    function togglePin(id, e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (pinnedIds.has(id)) {
+        pinnedIds.delete(id);
+      } else {
+        pinnedIds.add(id);
+      }
+      savePins();
+      render();
+    }
+
+    function render() {
+      // Filter & Search logic
+      const filtered = LAB_DATA.filter(item => {
+        const matchesCat = (currentCategory === "all") || (item.category === currentCategory);
+        const matchesQuery = !searchQuery || 
+          item.title.toLowerCase().includes(searchQuery) ||
+          item.desc.toLowerCase().includes(searchQuery) ||
+          item.tag.toLowerCase().includes(searchQuery);
+        return matchesCat && matchesQuery;
+      });
+
+      // Sort: pinned first, then natural order
+      filtered.sort((a, b) => {
+        const aPinned = pinnedIds.has(a.id) ? 1 : 0;
+        const bPinned = pinnedIds.has(b.id) ? 1 : 0;
+        return bPinned - aPinned;
+      });
+
+      itemCountEl.textContent = `${filtered.length} / ${LAB_DATA.length} Items`;
+
+      if (filtered.length === 0) {
+        gridEl.innerHTML = `<div class="empty-state">No experiments found matching "${searchQuery}"</div>`;
+        return;
+      }
+
+      gridEl.innerHTML = filtered.map(item => {
+        const isPinned = pinnedIds.has(item.id);
+        return `
+          <a href="${item.url}" class="card">
+            <button class="pin-btn ${isPinned ? 'pinned' : ''}" onclick="togglePin('${item.id}', event)" title="${isPinned ? 'Unpin' : 'Pin to top'}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="${isPinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+            </button>
+            <div class="card-main">
+              <div class="card-header">
+                <div class="card-title">${item.title}</div>
+              </div>
+              <div class="card-desc">${item.desc}</div>
+            </div>
+            <div class="card-footer">
+              <span class="tag">${item.tag}</span>
+              <span>&rarr;</span>
+            </div>
+          </a>
+        `;
+      }).join("");
+    }
+
+    // Keyboard Hotkey (Press '/' to search)
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "/" && document.activeElement !== searchInput) {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+      }
+      if (e.key === "Escape" && document.activeElement === searchInput) {
+        searchInput.value = "";
+        searchQuery = "";
+        searchInput.blur();
+        render();
+      }
+    });
+
+    searchInput.addEventListener("input", (e) => {
+      searchQuery = e.target.value.trim().toLowerCase();
+      render();
+    });
+
+    filterButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        filterButtons.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentCategory = btn.dataset.category;
+        render();
+      });
+    });
+
+    btnGrid.addEventListener("click", () => {
+      btnGrid.classList.add("active");
+      btnList.classList.remove("active");
+      gridEl.classList.remove("list-view");
+    });
+
+    btnList.addEventListener("click", () => {
+      btnList.classList.add("active");
+      btnGrid.classList.remove("active");
+      gridEl.classList.add("list-view");
+    });
+
+    // Initial render
+    render();
+  </script>
 </body>
 </html>
