@@ -1,0 +1,1258 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TimeSlot Dispatcher | 空き時間候補ピッカー</title>
+  <style>
+    /* ==========================================================================
+       CSS Reset & King Jim Product Aesthetics Tokens
+       ========================================================================== */
+    :root {
+      /* Theme: Monochrome Terminal (Default) */
+      --bg: #121212;
+      --surface: #1e1e1e;
+      --surface-sub: #282828;
+      --border: #3a3a3a;
+      --border-focus: #e0e0e0;
+      --text-main: #f0f0f0;
+      --text-muted: #888888;
+      --text-dim: #555555;
+      --accent: #ffffff;
+      --accent-inv: #000000;
+      --selected-bg: #e0e0e0;
+      --selected-text: #000000;
+      --range-bg: #2a2a2a;
+      --danger: #d93025;
+      --badge-bg: #333333;
+      --radius: 2px;
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    [data-theme="slate"] {
+      /* Theme: Corporate Slate */
+      --bg: #f4f6f8;
+      --surface: #ffffff;
+      --surface-sub: #eef2f5;
+      --border: #d0d7de;
+      --border-focus: #1a73e8;
+      --text-main: #1f2328;
+      --text-muted: #656d76;
+      --text-dim: #abb4be;
+      --accent: #1a73e8;
+      --accent-inv: #ffffff;
+      --selected-bg: #1a73e8;
+      --selected-text: #ffffff;
+      --range-bg: #e8f0fe;
+      --danger: #cf222e;
+      --badge-bg: #e1e4e8;
+      --radius: 4px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      line-height: 1.4;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* ==========================================================================
+       Header & Top Control Bar
+       ========================================================================== */
+    header {
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-tag {
+      background-color: var(--badge-bg);
+      color: var(--text-muted);
+      font-size: 10px;
+      padding: 2px 5px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .segmented-btn {
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--surface-sub);
+    }
+
+    .segmented-btn button {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 4px 8px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+    }
+
+    .segmented-btn button.active {
+      background: var(--accent);
+      color: var(--accent-inv);
+      font-weight: 700;
+    }
+
+    /* ==========================================================================
+       Main Workspace (Liquid Grid)
+       ========================================================================== */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(320px, 420px) minmax(320px, 1fr);
+      gap: 1px;
+      background-color: var(--border);
+      overflow: hidden;
+    }
+
+    @media (max-width: 740px) {
+      main {
+        grid-template-columns: 1fr;
+        overflow-y: auto;
+      }
+    }
+
+    .pane {
+      background-color: var(--surface);
+      padding: 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 4px;
+      margin-bottom: 4px;
+    }
+
+    /* ==========================================================================
+       Calendar Component
+       ========================================================================== */
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .cal-title {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .cal-nav {
+      display: flex;
+      gap: 4px;
+    }
+
+    .btn-tool {
+      background: var(--surface-sub);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 3px 8px;
+      font-size: 11px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-mono);
+    }
+
+    .btn-tool:hover {
+      border-color: var(--border-focus);
+    }
+
+    .btn-tool:active {
+      transform: translateY(1px);
+    }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      text-align: center;
+    }
+
+    .cal-dow {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      padding: 4px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .cal-dow.sat { color: #58a6ff; }
+    .cal-dow.sun { color: #f85149; }
+
+    .cal-day {
+      aspect-ratio: 1.1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      cursor: pointer;
+      background: transparent;
+      color: var(--text-main);
+    }
+
+    .cal-day:hover:not(.empty) {
+      background-color: var(--surface-sub);
+      border-color: var(--border);
+    }
+
+    .cal-day.empty {
+      cursor: default;
+    }
+
+    .cal-day.today::after {
+      content: "";
+      width: 4px;
+      height: 4px;
+      background-color: var(--accent);
+      border-radius: 50%;
+      margin-top: 1px;
+    }
+
+    .cal-day.selected {
+      background-color: var(--selected-bg) !important;
+      color: var(--selected-text) !important;
+      font-weight: 700;
+      border-color: var(--selected-bg);
+    }
+
+    .cal-day.selected::after {
+      background-color: var(--selected-text);
+    }
+
+    .cal-shortcuts {
+      display: flex;
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    /* ==========================================================================
+       Time Slots Grid (08:00 - 19:00 / 30min)
+       ========================================================================== */
+    .time-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface-sub);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 10px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .time-status .indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      margin-right: 6px;
+    }
+
+    .time-status.active .indicator {
+      background: #238636;
+      box-shadow: 0 0 6px #238636;
+    }
+
+    .quick-durations {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    .slots-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    .btn-slot {
+      background: var(--surface-sub);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 7px 0;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-align: center;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.1s, border-color 0.1s;
+    }
+
+    .btn-slot:hover {
+      border-color: var(--border-focus);
+    }
+
+    .btn-slot.start-selected {
+      background-color: var(--selected-bg);
+      color: var(--selected-text);
+      font-weight: 700;
+      border-color: var(--selected-bg);
+    }
+
+    .btn-slot.in-range {
+      background-color: var(--range-bg);
+      border-color: var(--border-focus);
+    }
+
+    /* ==========================================================================
+       Output Textarea & Control Deck
+       ========================================================================== */
+    .output-container {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 240px;
+    }
+
+    textarea#outputBox {
+      flex: 1;
+      width: 100%;
+      background-color: var(--surface-sub);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.6;
+      resize: vertical;
+      min-height: 200px;
+      outline: none;
+      user-select: text;
+    }
+
+    textarea#outputBox:focus {
+      border-color: var(--border-focus);
+    }
+
+    .output-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      flex: 2;
+      min-width: 140px;
+      background: var(--accent);
+      color: var(--accent-inv);
+      border: 1px solid var(--accent);
+      font-weight: 700;
+      padding: 8px 12px;
+      font-size: 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+    }
+
+    .btn-primary:active {
+      transform: translateY(1px);
+    }
+
+    .btn-secondary {
+      flex: 1;
+      min-width: 80px;
+      background: var(--surface-sub);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      font-size: 11px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-family: var(--font-mono);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--border-focus);
+    }
+
+    /* Option Settings Panel */
+    .options-grid {
+      background: var(--surface-sub);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 10px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+    }
+
+    .toggle-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .toggle-label input[type="checkbox"] {
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* Toast Notification */
+    #toast {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      background: var(--accent);
+      color: var(--accent-inv);
+      padding: 8px 14px;
+      border-radius: var(--radius);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.15s, transform 0.15s;
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body data-theme="terminal">
+
+  <!-- ==========================================================================
+       Header
+       ========================================================================== -->
+  <header>
+    <div class="brand">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      <span>TIMESLOT PICKER</span>
+      <span class="brand-tag">v2.0</span>
+    </div>
+
+    <div class="header-controls">
+      <!-- Language Switch -->
+      <div class="segmented-btn" id="langSwitch">
+        <button type="button" data-lang="ja" class="active">JA</button>
+        <button type="button" data-lang="en">EN</button>
+      </div>
+
+      <!-- Theme Switch -->
+      <div class="segmented-btn" id="themeSwitch">
+        <button type="button" data-theme="terminal" class="active">TERM</button>
+        <button type="button" data-theme="slate">SLATE</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       Main Workspace
+       ========================================================================== -->
+  <main>
+    <!-- LEFT PANE: Input / Selection -->
+    <div class="pane">
+      <!-- Date Selector -->
+      <div>
+        <div class="section-title">
+          <span id="lblDateSection">1. 日付選択 (Date)</span>
+          <span id="selectedDateDisplay" style="font-family:var(--font-mono); font-weight:normal; color:var(--text-main);"></span>
+        </div>
+
+        <div class="cal-header">
+          <button type="button" class="btn-tool" id="btnPrevMonth">‹</button>
+          <div class="cal-title" id="calMonthYear">2026年 11月</div>
+          <button type="button" class="btn-tool" id="btnNextMonth">›</button>
+        </div>
+
+        <div class="cal-grid" id="calGrid">
+          <!-- Calendar dynamic injection -->
+        </div>
+
+        <div class="cal-shortcuts">
+          <button type="button" class="btn-tool" id="btnQuickToday">今日 (Today)</button>
+          <button type="button" class="btn-tool" id="btnQuickTomorrow">明日 (Tmrw)</button>
+          <button type="button" class="btn-tool" id="btnQuickNextWeek">来週同曜 (+7d)</button>
+        </div>
+      </div>
+
+      <!-- Time Slots Selector -->
+      <div>
+        <div class="section-title">
+          <span id="lblTimeSection">2. 時間選択 (Time: 08:00 - 19:00)</span>
+          <span id="lblStepHint" style="font-size:10px; color:var(--text-muted); font-family:var(--font-mono);">[1] 開始を選択</span>
+        </div>
+
+        <!-- Selection Status Banner -->
+        <div class="time-status" id="timeStatusBanner">
+          <div>
+            <span class="indicator"></span>
+            <span id="statusText">開始時間を選んでください</span>
+          </div>
+          <button type="button" class="btn-tool" id="btnCancelSelection" style="padding:1px 6px; font-size:10px;">取消</button>
+        </div>
+
+        <!-- Quick Duration Presets (Active when start time is chosen) -->
+        <div class="quick-durations">
+          <button type="button" class="btn-tool" data-dur="30">+30分 (30m)</button>
+          <button type="button" class="btn-tool" data-dur="45">+45分 (45m)</button>
+          <button type="button" class="btn-tool" data-dur="60">+1時間 (1h)</button>
+          <button type="button" class="btn-tool" data-dur="90">+90分 (1.5h)</button>
+        </div>
+
+        <!-- 30-min Slots: 08:00 to 19:00 -->
+        <div class="slots-grid" id="slotsGrid">
+          <!-- Slots dynamic injection -->
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANE: Output & Direct Edit -->
+    <div class="pane">
+      <div class="section-title">
+        <span id="lblOutputSection">候補日時テキスト (Output Preview)</span>
+        <span id="slotCountBadge" class="brand-tag">0 件</span>
+      </div>
+
+      <!-- Formatting / Preset Switches -->
+      <div class="options-grid">
+        <label class="toggle-label">
+          <input type="checkbox" id="chkIntroOutro" checked>
+          <span id="lblChkIntro">挨拶文を自動付与</span>
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="chkIncludeDow" checked>
+          <span id="lblChkDow">曜日を表示 (曜)</span>
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="chkShortFormat">
+          <span id="lblChkShort">M/D 形式 (年省略)</span>
+        </label>
+      </div>
+
+      <!-- Free Edit Box -->
+      <div class="output-container">
+        <textarea id="outputBox" spellcheck="false" placeholder="カレンダーと時間を選択すると、ここに候補リストが生成されます。直接キーボードで編集も可能です。"></textarea>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="output-actions">
+        <button type="button" class="btn-primary" id="btnCopy">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <span id="btnCopyText">クリップボードにコピー</span>
+        </button>
+
+        <button type="button" class="btn-secondary" id="btnUndo">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+          </svg>
+          <span id="btnUndoText">1行戻す</span>
+        </button>
+
+        <button type="button" class="btn-secondary" id="btnClear" style="color:var(--danger);">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          <span id="btnClearText">全消去</span>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Audio / Visual Toast -->
+  <div id="toast">Copied to clipboard</div>
+
+  <!-- ==========================================================================
+       Application Logic (Vanilla ES6)
+       ========================================================================== -->
+  <script>
+    (function () {
+      "use strict";
+
+      // --------------------------------------------------------------------------
+      // Sound Synthesizer (Zero-Dependency Web Audio API)
+      // --------------------------------------------------------------------------
+      const Sound = {
+        ctx: null,
+        init() {
+          if (!this.ctx && (window.AudioContext || window.webkitAudioContext)) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+          }
+        },
+        click() {
+          try {
+            this.init();
+            if (!this.ctx) return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(400, this.ctx.currentTime + 0.03);
+            gain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.03);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.03);
+          } catch (e) { /* silent ignore */ }
+        },
+        success() {
+          try {
+            this.init();
+            if (!this.ctx) return;
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(587.33, now); // D5
+            osc.frequency.setValueAtTime(880, now + 0.06); // A5
+            gain.gain.setValueAtTime(0.06, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.18);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(now + 0.18);
+          } catch (e) { /* silent ignore */ }
+        }
+      };
+
+      // --------------------------------------------------------------------------
+      // I18N Dictionary
+      // --------------------------------------------------------------------------
+      const DICT = {
+        ja: {
+          lblDate: "1. 日付選択 (Date)",
+          lblTime: "2. 時間選択 (Time: 08:00 - 19:00)",
+          lblOutput: "候補日時テキスト (Output Preview)",
+          stepStart: "[1] 開始を選択",
+          stepEnd: "[2] 終了を選択",
+          statusEmpty: "開始時間を選んでください",
+          statusSelected: (t) => `${t} 開始 ➔ 終了時間を選択`,
+          cancel: "取消",
+          today: "今日",
+          tomorrow: "明日",
+          nextWeek: "来週同曜",
+          chkIntro: "挨拶・結び文を自動付与",
+          chkDow: "曜日を表示",
+          chkShort: "M/D 形式 (年省略)",
+          copy: "クリップボードにコピー",
+          undo: "1行戻す",
+          clear: "全消去",
+          copiedToast: "📋 クリップボードにコピーしました",
+          undoToast: "⎌ 1行取り消しました",
+          clearedToast: "✕ リセットしました",
+          countBadge: (n) => `${n} 件`,
+          introText: "以下の日程でご都合いかがでしょうか。",
+          outroText: "上記日程でご都合がつかない場合は、恐れ入りますが候補日時をお知らせいただけますと幸いです。\nよろしくお願いいたします。",
+          dow: ["日", "月", "火", "水", "木", "金", "土"],
+          months: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"]
+        },
+        en: {
+          lblDate: "1. Select Date",
+          lblTime: "2. Select Time (08:00 - 19:00)",
+          lblOutput: "Availability Text (Output Preview)",
+          stepStart: "[1] Pick start",
+          stepEnd: "[2] Pick end",
+          statusEmpty: "Please pick start time",
+          statusSelected: (t) => `Starts at ${t} ➔ Pick end time`,
+          cancel: "Reset",
+          today: "Today",
+          tomorrow: "Tmrw",
+          nextWeek: "+7 Days",
+          chkIntro: "Include Intro / Outro lines",
+          chkDow: "Show Day of Week",
+          chkShort: "Short (M/D without Year)",
+          copy: "Copy to Clipboard",
+          undo: "Undo Line",
+          clear: "Clear All",
+          copiedToast: "📋 Copied to clipboard",
+          undoToast: "⎌ Last line undone",
+          clearedToast: "✕ Cleared all",
+          countBadge: (n) => `${n} slots`,
+          introText: "Please let me know if any of the following times work for you:",
+          outroText: "If none of these work, please feel free to suggest an alternative time that suits you.\nThank you.",
+          dow: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+          months: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        }
+      };
+
+      // --------------------------------------------------------------------------
+      // Application State
+      // --------------------------------------------------------------------------
+      const STATE = {
+        lang: "ja",
+        theme: "terminal",
+        currentCalYear: 0,
+        currentCalMonth: 0, // 0-indexed
+        selectedDate: null,  // Date instance
+        startTime: null,     // string e.g. "10:00"
+        slotsList: []        // Array of { date: Date, start: "HH:MM", end: "HH:MM" }
+      };
+
+      // Generate time series: 08:00 to 19:00 (30-min intervals)
+      const TIME_STEPS = [];
+      for (let h = 8; h <= 19; h++) {
+        const hh = String(h).padStart(2, "0");
+        TIME_STEPS.push(`${hh}:00`);
+        if (h !== 19) {
+          TIME_STEPS.push(`${hh}:30`);
+        }
+      }
+
+      function timeToMinutes(t) {
+        const [h, m] = t.split(":").map(Number);
+        return h * 60 + m;
+      }
+
+      function minutesToTime(mins) {
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      }
+
+      // --------------------------------------------------------------------------
+      // DOM Selectors
+      // --------------------------------------------------------------------------
+      const els = {
+        calGrid: document.getElementById("calGrid"),
+        calMonthYear: document.getElementById("calMonthYear"),
+        btnPrevMonth: document.getElementById("btnPrevMonth"),
+        btnNextMonth: document.getElementById("btnNextMonth"),
+        selectedDateDisplay: document.getElementById("selectedDateDisplay"),
+        slotsGrid: document.getElementById("slotsGrid"),
+        statusText: document.getElementById("statusText"),
+        timeStatusBanner: document.getElementById("timeStatusBanner"),
+        btnCancelSelection: document.getElementById("btnCancelSelection"),
+        outputBox: document.getElementById("outputBox"),
+        btnCopy: document.getElementById("btnCopy"),
+        btnUndo: document.getElementById("btnUndo"),
+        btnClear: document.getElementById("btnClear"),
+        chkIntroOutro: document.getElementById("chkIntroOutro"),
+        chkIncludeDow: document.getElementById("chkIncludeDow"),
+        chkShortFormat: document.getElementById("chkShortFormat"),
+        slotCountBadge: document.getElementById("slotCountBadge"),
+        toast: document.getElementById("toast"),
+        langBtns: document.querySelectorAll("#langSwitch button"),
+        themeBtns: document.querySelectorAll("#themeSwitch button")
+      };
+
+      // --------------------------------------------------------------------------
+      // Toast Engine
+      // --------------------------------------------------------------------------
+      let toastTimer = null;
+      function showToast(text) {
+        els.toast.textContent = text;
+        els.toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          els.toast.classList.remove("show");
+        }, 1800);
+      }
+
+      // --------------------------------------------------------------------------
+      // Formatting Engine (Option B: Business Bullet Formatting + EN support)
+      // --------------------------------------------------------------------------
+      function formatSlotLine(slot) {
+        const d = slot.date;
+        const year = d.getFullYear();
+        const month = d.getMonth() + 1;
+        const date = d.getDate();
+        const dowIndex = d.getDay();
+        const dowStr = DICT[STATE.lang].dow[dowIndex];
+
+        const useShort = els.chkShortFormat.checked;
+        const useDow = els.chkIncludeDow.checked;
+
+        if (STATE.lang === "ja") {
+          let datePart = "";
+          if (useShort) {
+            datePart = `${month}/${date}`;
+          } else {
+            datePart = `${year}年${month}月${date}日`;
+          }
+          if (useDow) {
+            datePart += `(${dowStr})`;
+          }
+          return `・${datePart} ${slot.start}～${slot.end}`;
+        } else {
+          // English Format: e.g. - Tue, Nov 17, 2026: 10:00 - 11:30
+          const mStr = DICT.en.months[d.getMonth()];
+          let datePart = "";
+          if (useShort) {
+            datePart = `${mStr} ${date}`;
+          } else {
+            datePart = `${mStr} ${date}, ${year}`;
+          }
+          if (useDow) {
+            datePart = `${dowStr}, ${datePart}`;
+          }
+          return `- ${datePart}: ${slot.start} - ${slot.end}`;
+        }
+      }
+
+      function buildFullText() {
+        if (STATE.slotsList.length === 0) {
+          return "";
+        }
+
+        const lines = STATE.slotsList.map(formatSlotLine);
+        const slotText = lines.join("\n");
+
+        if (!els.chkIntroOutro.checked) {
+          return slotText;
+        }
+
+        const d = DICT[STATE.lang];
+        return `${d.introText}\n\n${slotText}\n\n${d.outroText}`;
+      }
+
+      function refreshOutputBox() {
+        els.outputBox.value = buildFullText();
+        els.slotCountBadge.textContent = DICT[STATE.lang].countBadge(STATE.slotsList.length);
+      }
+
+      // --------------------------------------------------------------------------
+      // Calendar Rendering Engine
+      // --------------------------------------------------------------------------
+      function renderCalendar() {
+        const y = STATE.currentCalYear;
+        const m = STATE.currentCalMonth;
+        const dDict = DICT[STATE.lang];
+
+        if (STATE.lang === "ja") {
+          els.calMonthYear.textContent = `${y}年 ${m + 1}月`;
+        } else {
+          els.calMonthYear.textContent = `${dDict.months[m]} ${y}`;
+        }
+
+        els.calGrid.innerHTML = "";
+
+        // Render Day-of-week headers
+        dDict.dow.forEach((dName, idx) => {
+          const el = document.createElement("div");
+          el.className = "cal-dow";
+          if (idx === 6) el.classList.add("sat");
+          if (idx === 0) el.classList.add("sun");
+          el.textContent = dName;
+          els.calGrid.appendChild(el);
+        });
+
+        const firstDayDow = new Date(y, m, 1).getDay();
+        const daysInMonth = new Date(y, m + 1, 0).getDate();
+
+        // Leading empty slots
+        for (let i = 0; i < firstDayDow; i++) {
+          const empty = document.createElement("div");
+          empty.className = "cal-day empty";
+          els.calGrid.appendChild(empty);
+        }
+
+        const today = new Date();
+        const isCurrentMonth = today.getFullYear() === y && today.getMonth() === m;
+
+        for (let d = 1; d <= daysInMonth; d++) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "cal-day";
+          btn.textContent = d;
+
+          const cellDate = new Date(y, m, d);
+
+          if (isCurrentMonth && today.getDate() === d) {
+            btn.classList.add("today");
+          }
+
+          if (
+            STATE.selectedDate &&
+            STATE.selectedDate.getFullYear() === y &&
+            STATE.selectedDate.getMonth() === m &&
+            STATE.selectedDate.getDate() === d
+          ) {
+            btn.classList.add("selected");
+          }
+
+          btn.addEventListener("click", () => {
+            Sound.click();
+            STATE.selectedDate = cellDate;
+            renderCalendar();
+            updateSelectedDateDisplay();
+          });
+
+          els.calGrid.appendChild(btn);
+        }
+      }
+
+      function updateSelectedDateDisplay() {
+        if (!STATE.selectedDate) return;
+        const d = STATE.selectedDate;
+        const dow = DICT[STATE.lang].dow[d.getDay()];
+        if (STATE.lang === "ja") {
+          els.selectedDateDisplay.textContent = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} (${dow})`;
+        } else {
+          els.selectedDateDisplay.textContent = `${dow}, ${DICT.en.months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+        }
+      }
+
+      // --------------------------------------------------------------------------
+      // Time Slot Grid & 2-Tap Interactive Logic
+      // --------------------------------------------------------------------------
+      function renderTimeSlots() {
+        els.slotsGrid.innerHTML = "";
+        const startMins = STATE.startTime ? timeToMinutes(STATE.startTime) : null;
+
+        TIME_STEPS.forEach((slotTime) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "btn-slot";
+          btn.textContent = slotTime;
+          btn.dataset.time = slotTime;
+
+          if (STATE.startTime === slotTime) {
+            btn.classList.add("start-selected");
+          }
+
+          btn.addEventListener("click", () => handleSlotClick(slotTime));
+          els.slotsGrid.appendChild(btn);
+        });
+
+        updateTimeBanner();
+      }
+
+      function updateTimeBanner() {
+        const dict = DICT[STATE.lang];
+        if (!STATE.startTime) {
+          els.timeStatusBanner.classList.remove("active");
+          els.statusText.textContent = dict.statusEmpty;
+          document.getElementById("lblStepHint").textContent = dict.stepStart;
+          els.btnCancelSelection.style.display = "none";
+        } else {
+          els.timeStatusBanner.classList.add("active");
+          els.statusText.textContent = dict.statusSelected(STATE.startTime);
+          document.getElementById("lblStepHint").textContent = dict.stepEnd;
+          els.btnCancelSelection.style.display = "inline-block";
+        }
+      }
+
+      function handleSlotClick(clickedTime) {
+        Sound.click();
+
+        // 1st Tap: Start time selection
+        if (!STATE.startTime) {
+          STATE.startTime = clickedTime;
+          renderTimeSlots();
+          return;
+        }
+
+        // 2nd Tap: Evaluate end time
+        const startM = timeToMinutes(STATE.startTime);
+        const endM = timeToMinutes(clickedTime);
+
+        if (endM <= startM) {
+          // Rule: If clicking earlier or same time, treat as new start time
+          STATE.startTime = clickedTime;
+          renderTimeSlots();
+        } else {
+          // Success: Commit pair into slot array
+          commitSlot(STATE.startTime, clickedTime);
+          STATE.startTime = null;
+          renderTimeSlots();
+        }
+      }
+
+      function commitSlot(start, end) {
+        STATE.slotsList.push({
+          date: new Date(STATE.selectedDate),
+          start,
+          end
+        });
+        Sound.success();
+        refreshOutputBox();
+        showToast(`+ ${formatSlotLine(STATE.slotsList[STATE.slotsList.length - 1])}`);
+      }
+
+      // Quick Duration Shortcut Buttons
+      function applyQuickDuration(extraMinutes) {
+        if (!STATE.startTime) {
+          showToast("開始時間を先に選択してください (Pick start time first)");
+          return;
+        }
+        const startM = timeToMinutes(STATE.startTime);
+        const endM = startM + extraMinutes;
+        const endTime = minutesToTime(endM);
+
+        commitSlot(STATE.startTime, endTime);
+        STATE.startTime = null;
+        renderTimeSlots();
+      }
+
+      // --------------------------------------------------------------------------
+      // Language & Theme Switching
+      // --------------------------------------------------------------------------
+      function applyLanguage(lang) {
+        STATE.lang = lang;
+        const d = DICT[lang];
+
+        document.getElementById("lblDateSection").textContent = d.lblDate;
+        document.getElementById("lblTimeSection").textContent = d.lblTime;
+        document.getElementById("lblOutputSection").textContent = d.lblOutput;
+        document.getElementById("btnQuickToday").textContent = d.today;
+        document.getElementById("btnQuickTomorrow").textContent = d.tomorrow;
+        document.getElementById("btnQuickNextWeek").textContent = d.nextWeek;
+        document.getElementById("lblChkIntro").textContent = d.chkIntro;
+        document.getElementById("lblChkDow").textContent = d.chkDow;
+        document.getElementById("lblChkShort").textContent = d.chkShort;
+        document.getElementById("btnCopyText").textContent = d.copy;
+        document.getElementById("btnUndoText").textContent = d.undo;
+        document.getElementById("btnClearText").textContent = d.clear;
+        els.btnCancelSelection.textContent = d.cancel;
+
+        renderCalendar();
+        updateSelectedDateDisplay();
+        renderTimeSlots();
+        refreshOutputBox();
+      }
+
+      function applyTheme(theme) {
+        STATE.theme = theme;
+        document.body.dataset.theme = theme;
+      }
+
+      // --------------------------------------------------------------------------
+      // Event Listeners Initialization
+      // --------------------------------------------------------------------------
+      function initEvents() {
+        // Month Navigation
+        els.btnPrevMonth.addEventListener("click", () => {
+          Sound.click();
+          STATE.currentCalMonth--;
+          if (STATE.currentCalMonth < 0) {
+            STATE.currentCalMonth = 11;
+            STATE.currentCalYear--;
+          }
+          renderCalendar();
+        });
+
+        els.btnNextMonth.addEventListener("click", () => {
+          Sound.click();
+          STATE.currentCalMonth++;
+          if (STATE.currentCalMonth > 11) {
+            STATE.currentCalMonth = 0;
+            STATE.currentCalYear++;
+          }
+          renderCalendar();
+        });
+
+        // Date Shortcuts
+        document.getElementById("btnQuickToday").addEventListener("click", () => {
+          Sound.click();
+          const t = new Date();
+          STATE.selectedDate = t;
+          STATE.currentCalYear = t.getFullYear();
+          STATE.currentCalMonth = t.getMonth();
+          renderCalendar();
+          updateSelectedDateDisplay();
+        });
+
+        document.getElementById("btnQuickTomorrow").addEventListener("click", () => {
+          Sound.click();
+          const t = new Date();
+          t.setDate(t.getDate() + 1);
+          STATE.selectedDate = t;
+          STATE.currentCalYear = t.getFullYear();
+          STATE.currentCalMonth = t.getMonth();
+          renderCalendar();
+          updateSelectedDateDisplay();
+        });
+
+        document.getElementById("btnQuickNextWeek").addEventListener("click", () => {
+          Sound.click();
+          const base = STATE.selectedDate || new Date();
+          const next = new Date(base);
+          next.setDate(next.getDate() + 7);
+          STATE.selectedDate = next;
+          STATE.currentCalYear = next.getFullYear();
+          STATE.currentCalMonth = next.getMonth();
+          renderCalendar();
+          updateSelectedDateDisplay();
+        });
+
+        // Time Cancel
+        els.btnCancelSelection.addEventListener("click", () => {
+          Sound.click();
+          STATE.startTime = null;
+          renderTimeSlots();
+        });
+
+        // Quick Duration Buttons (+30m, +45m, +60m, +90m)
+        document.querySelectorAll(".quick-durations button").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const mins = parseInt(btn.dataset.dur, 10);
+            applyQuickDuration(mins);
+          });
+        });
+
+        // Clipboard Copy
+        els.btnCopy.addEventListener("click", () => {
+          const val = els.outputBox.value.trim();
+          if (!val) {
+            showToast("テキストが空です (Empty text)");
+            return;
+          }
+          navigator.clipboard.writeText(val).then(() => {
+            Sound.success();
+            showToast(DICT[STATE.lang].copiedToast);
+          }).catch(() => {
+            // Fallback execCommand
+            els.outputBox.select();
+            document.execCommand("copy");
+            showToast(DICT[STATE.lang].copiedToast);
+          });
+        });
+
+        // Undo Last Line
+        els.btnUndo.addEventListener("click", () => {
+          if (STATE.slotsList.length === 0) return;
+          Sound.click();
+          STATE.slotsList.pop();
+          refreshOutputBox();
+          showToast(DICT[STATE.lang].undoToast);
+        });
+
+        // Clear All
+        els.btnClear.addEventListener("click", () => {
+          if (STATE.slotsList.length === 0 && !els.outputBox.value) return;
+          Sound.click();
+          STATE.slotsList = [];
+          STATE.startTime = null;
+          renderTimeSlots();
+          refreshOutputBox();
+          showToast(DICT[STATE.lang].clearedToast);
+        });
+
+        // Format Toggles
+        [els.chkIntroOutro, els.chkIncludeDow, els.chkShortFormat].forEach((chk) => {
+          chk.addEventListener("change", () => {
+            Sound.click();
+            refreshOutputBox();
+          });
+        });
+
+        // Header Language Buttons
+        els.langBtns.forEach((btn) => {
+          btn.addEventListener("click", () => {
+            Sound.click();
+            els.langBtns.forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+            applyLanguage(btn.dataset.lang);
+          });
+        });
+
+        // Header Theme Buttons
+        els.themeBtns.forEach((btn) => {
+          btn.addEventListener("click", () => {
+            Sound.click();
+            els.themeBtns.forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+            applyTheme(btn.dataset.theme);
+          });
+        });
+      }
+
+      // --------------------------------------------------------------------------
+      // App Bootstrap
+      // --------------------------------------------------------------------------
+      function bootstrap() {
+        const now = new Date();
+        STATE.selectedDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        STATE.currentCalYear = now.getFullYear();
+        STATE.currentCalMonth = now.getMonth();
+
+        initEvents();
+        applyTheme("terminal"); // Default: King Jim Terminal Mode
+        applyLanguage("ja");
+      }
+
+      bootstrap();
+    })();
+  </script>
+</body>
+</html>
