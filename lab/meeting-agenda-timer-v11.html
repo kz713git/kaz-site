@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Meeting Agenda Timer</title>
   <style>
     :root {
@@ -30,6 +30,8 @@
       max-width: 440px;
       margin: 0 auto;
       user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
     }
 
     header {
@@ -179,7 +181,6 @@
       color: #ffffff;
     }
 
-    /* Compact Slider Controls */
     .mini-control {
       display: inline-flex;
       align-items: center;
@@ -241,6 +242,7 @@
       font-size: 11px;
       border-radius: 4px;
       transition: all 0.15s ease;
+      touch-action: manipulation;
     }
     button:hover { background: #3b4252; }
     button:active { transform: translateY(1px); }
@@ -305,6 +307,7 @@
       width: 110px;
       padding: 1px 3px;
       user-select: text;
+      -webkit-user-select: text;
     }
     .speaker-name:focus {
       outline: none;
@@ -324,55 +327,93 @@
       display: none;
     }
 
-    /* Sliders Panel (Card level) */
-    .sliders-panel {
+    /* --- Industrial CASIO Stepper (Robust Mobile-Safe Design) --- */
+    .steppers-panel {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 6px;
-      background: #14161a;
-      padding: 5px 6px;
-      border-radius: 4px;
-      border: 1px solid #232730;
-      font-size: 10px;
-      color: var(--text-sub);
       width: 100%;
-      min-width: 0;
     }
 
-    .slider-item {
+    .stepper-box {
+      background: #14161a;
+      border: 1px solid #282c35;
+      border-radius: 4px;
+      padding: 3px 4px;
       display: flex;
       align-items: center;
-      gap: 4px;
-      min-width: 0;
+      justify-content: space-between;
     }
 
-    .slider-item label {
-      font-weight: 600;
+    .stepper-label {
       font-size: 10px;
+      font-weight: 700;
       color: var(--text-sub);
-      flex-shrink: 0;
+      text-transform: uppercase;
+      padding-left: 2px;
     }
 
-    .slider-item input[type=range] {
-      flex: 1 1 auto;
-      min-width: 0;
-      width: 100%;
-      height: 4px;
-      accent-color: #10b981;
-      cursor: pointer;
-    }
-    .slider-item.alert-slider input[type=range] {
-      accent-color: #f59e0b;
+    .stepper-controls {
+      display: flex;
+      align-items: center;
+      gap: 3px;
     }
 
-    .slider-item span.val {
-      font-family: var(--font-mono);
+    .btn-step {
+      background: #252932;
+      border: 1px solid #323846;
       color: var(--text-main);
-      font-weight: 600;
-      font-size: 10px;
-      width: 26px;
-      text-align: right;
-      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 3px;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      -webkit-touch-callout: none;
+    }
+    .btn-step:active {
+      background: #3b82f6;
+      color: #fff;
+    }
+
+    .stepper-val-wrap {
+      position: relative;
+      width: 32px;
+      text-align: center;
+    }
+
+    .stepper-val {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: #10b981;
+      cursor: pointer;
+      display: inline-block;
+      width: 100%;
+    }
+    .alert-stepper .stepper-val {
+      color: #f59e0b;
+    }
+
+    .stepper-input {
+      position: absolute;
+      inset: -2px -4px;
+      background: #0f1115;
+      border: 1px solid #3b82f6;
+      border-radius: 3px;
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      outline: none;
+      display: none;
     }
 
     .card-row-mid {
@@ -466,6 +507,7 @@
       border: 1px solid #232730;
       line-height: 1.4;
       user-select: text;
+      -webkit-user-select: text;
     }
   </style>
 </head>
@@ -553,12 +595,12 @@
   </div>
 
   <script>
-    // --- 1. Authentic CASIO Piezo Audio Engine with Scalable Duration ---
+    // --- 1. Authentic CASIO Piezo Audio Engine ---
     let audioCtx = null;
     let masterGainNode = null;
     let piezoFilter = null;
     let currentVolume = 0.5;
-    let beepDurationMultiplier = 2.0; // Default 2x
+    let beepDurationMultiplier = 2.0;
 
     function initAudio() {
       if (!audioCtx) {
@@ -631,7 +673,6 @@
       });
     }
 
-    // Scaled Remind Beep (Base 2 pulses repeated by multiplier)
     async function soundRemind() {
       const sets = Math.max(1, Math.round(beepDurationMultiplier));
       const bursts = [];
@@ -646,7 +687,6 @@
       await playCasioTone(bursts);
     }
 
-    // Scaled Alarm (Base 4 pulses x 2 sets, scaled by multiplier)
     async function soundAlarm() {
       const sets = Math.max(1, Math.round(2 * beepDurationMultiplier));
       const bursts = [];
@@ -688,7 +728,7 @@
       }
     }
 
-    // --- 3. TTS Voice & Language Engine (Sequential & Anti-Clipping) ---
+    // --- 3. TTS Voice & Language Engine ---
     let availableVoices = [];
     let currentLang = 'en';
 
@@ -772,10 +812,10 @@
 
     function testVoice() {
       initAudio();
-      speakText('音声通知のテストです。残り3分です。', 'Voice notification test. 3 minutes remaining.');
+      speakText('音声通知のテストです。残り2分です。', 'Voice notification test. 2 minutes remaining.');
     }
 
-    // --- 4. State Management ---
+    // --- 4. State Management (Defaults: 10m Dur / 2m Alert) ---
     let timers = [];
     let meetingLimitSec = 30 * 60;
 
@@ -785,7 +825,7 @@
       updateOverallProgress();
     }
 
-    function addTimer(name = '', minutes = 10, remind = 3) {
+    function addTimer(name = '', minutes = 10, remind = 2) {
       const id = Date.now() + Math.random().toString(36).substr(2, 4);
       timers.push({
         id,
@@ -1204,7 +1244,7 @@
 
     setInterval(tick, 1000);
 
-    // --- 9. DOM Renderers ---
+    // --- 9. DOM Renderers & Bulletproof Stepper Engine ---
     function renderDisplayOnly() {
       timers.forEach(t => {
         const card = document.getElementById(`card-${t.id}`);
@@ -1237,9 +1277,109 @@
           barElem.classList.add('over');
           barElem.style.width = '100%';
         } else if (t.remindSec > 0 && t.remainSec <= t.remindSec) {
-          barElem.classList.add('remind');
+          barClass = 'remind';
         }
       });
+    }
+
+    // Bulletproof Stepper: Stops reliably on ANY pointer release or touch drop
+    function wireStepperButton(btn, timerId, type, delta) {
+      let pressTimeout = null;
+      let repeatInterval = null;
+      let safetyCount = 0;
+
+      function step() {
+        const t = timers.find(item => item.id === timerId);
+        if (!t) return;
+
+        if (type === 'dur') {
+          let current = Math.round(t.baseTotalSec / 60);
+          let next = Math.max(1, Math.min(180, current + delta));
+          updateConfig(timerId, 'minutes', next);
+          const valEl = document.getElementById(`val-dur-${timerId}`);
+          if (valEl) valEl.textContent = `${next}m`;
+        } else {
+          let current = Math.round(t.remindSec / 60);
+          let next = Math.max(0, Math.min(60, current + delta));
+          updateConfig(timerId, 'remind', next);
+          const valEl = document.getElementById(`val-alert-${timerId}`);
+          if (valEl) valEl.textContent = `${next}m`;
+        }
+      }
+
+      function stopRepeat() {
+        if (pressTimeout) clearTimeout(pressTimeout);
+        if (repeatInterval) clearInterval(repeatInterval);
+        pressTimeout = null;
+        repeatInterval = null;
+        safetyCount = 0;
+
+        // Cleanup global window listeners
+        window.removeEventListener('pointerup', stopRepeat);
+        window.removeEventListener('pointercancel', stopRepeat);
+        window.removeEventListener('touchend', stopRepeat);
+        window.removeEventListener('touchcancel', stopRepeat);
+      }
+
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        stopRepeat(); // Ensure any previous dangling state is cleared
+        step(); // Immediate single step on touch
+
+        // Listen globally on window so lifting finger ANYWHERE stops repeat
+        window.addEventListener('pointerup', stopRepeat, { once: true });
+        window.addEventListener('pointercancel', stopRepeat, { once: true });
+        window.addEventListener('touchend', stopRepeat, { once: true });
+        window.addEventListener('touchcancel', stopRepeat, { once: true });
+
+        // Wait 400ms before starting continuous fire
+        pressTimeout = setTimeout(() => {
+          repeatInterval = setInterval(() => {
+            step();
+            safetyCount++;
+            // Hard safety cutoff after 40 steps to prevent infinite runaway
+            if (safetyCount > 40) {
+              stopRepeat();
+            }
+          }, 90);
+        }, 400);
+      });
+
+      // Block iOS context menu
+      btn.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+
+    function wireInlineInput(valWrap, timerId, type) {
+      const valSpan = valWrap.querySelector('.stepper-val');
+      const input = valWrap.querySelector('.stepper-input');
+
+      valSpan.addEventListener('click', () => {
+        const t = timers.find(item => item.id === timerId);
+        if (!t) return;
+        const currentM = type === 'dur' ? Math.round(t.baseTotalSec / 60) : Math.round(t.remindSec / 60);
+        input.value = currentM;
+        input.style.display = 'block';
+        input.focus();
+        input.select();
+      });
+
+      function commit() {
+        const m = parseInt(input.value, 10);
+        if (!isNaN(m)) {
+          if (type === 'dur') {
+            updateConfig(timerId, 'minutes', Math.max(1, Math.min(180, m)));
+          } else {
+            updateConfig(timerId, 'remind', Math.max(0, Math.min(60, m)));
+          }
+        }
+        input.style.display = 'none';
+      }
+
+      input.addEventListener('keydown', (e) => {
+        if (e.code === 'Enter') input.blur();
+        if (e.code === 'Escape') input.style.display = 'none';
+      });
+      input.addEventListener('blur', commit);
     }
 
     function render() {
@@ -1278,18 +1418,30 @@
             <button class="btn-del" onclick="removeTimer('${t.id}')">×</button>
           </div>
 
-          <div class="sliders-panel">
-            <div class="slider-item">
-              <label>Dur</label>
-              <input type="range" min="1" max="60" value="${durMin}" 
-                     oninput="this.nextElementSibling.textContent=this.value+'m'; updateConfig('${t.id}', 'minutes', this.value)">
-              <span class="val">${durMin}m</span>
+          <!-- Industrial CASIO Stepper (Robust Mobile-Safe Design) -->
+          <div class="steppers-panel">
+            <div class="stepper-box">
+              <span class="stepper-label">Dur</span>
+              <div class="stepper-controls">
+                <button class="btn-step" id="btn-dur-minus-${t.id}">−</button>
+                <div class="stepper-val-wrap" id="wrap-dur-${t.id}">
+                  <span class="stepper-val" id="val-dur-${t.id}">${durMin}m</span>
+                  <input type="number" class="stepper-input" min="1" max="180">
+                </div>
+                <button class="btn-step" id="btn-dur-plus-${t.id}">+</button>
+              </div>
             </div>
-            <div class="slider-item alert-slider">
-              <label>Alert</label>
-              <input type="range" min="0" max="15" value="${alertMin}" 
-                     oninput="this.nextElementSibling.textContent=this.value+'m'; updateConfig('${t.id}', 'remind', this.value)">
-              <span class="val">${alertMin}m</span>
+
+            <div class="stepper-box alert-stepper">
+              <span class="stepper-label">Alert</span>
+              <div class="stepper-controls">
+                <button class="btn-step" id="btn-alert-minus-${t.id}">−</button>
+                <div class="stepper-val-wrap" id="wrap-alert-${t.id}">
+                  <span class="stepper-val" id="val-alert-${t.id}">${alertMin}m</span>
+                  <input type="number" class="stepper-input" min="0" max="60">
+                </div>
+                <button class="btn-step" id="btn-alert-plus-${t.id}">+</button>
+              </div>
             </div>
           </div>
 
@@ -1310,6 +1462,15 @@
           </div>
         `;
         container.appendChild(card);
+
+        // Attach safe stepper handlers
+        wireStepperButton(card.querySelector(`#btn-dur-minus-${t.id}`), t.id, 'dur', -1);
+        wireStepperButton(card.querySelector(`#btn-dur-plus-${t.id}`), t.id, 'dur', 1);
+        wireInlineInput(card.querySelector(`#wrap-dur-${t.id}`), t.id, 'dur');
+
+        wireStepperButton(card.querySelector(`#btn-alert-minus-${t.id}`), t.id, 'alert', -1);
+        wireStepperButton(card.querySelector(`#btn-alert-plus-${t.id}`), t.id, 'alert', 1);
+        wireInlineInput(card.querySelector(`#wrap-alert-${t.id}`), t.id, 'alert');
       });
     }
 
@@ -1354,10 +1515,10 @@
         }
       }
 
-      // Default Template
-      addTimer('Speaker A', 10, 3);
-      addTimer('Speaker B', 15, 5);
-      addTimer('Q&A / Feedback', 5, 1);
+      // Default Template (10m Dur / 2m Alert across all slots)
+      addTimer('Speaker A', 10, 2);
+      addTimer('Speaker B', 10, 2);
+      addTimer('Q&A / Feedback', 10, 2);
       updateOverallProgress();
     }
 
